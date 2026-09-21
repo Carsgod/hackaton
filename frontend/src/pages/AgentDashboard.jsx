@@ -1,52 +1,33 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  Play, Pause, RotateCcw, Send, Mic, Square, Monitor,
+  X,
   User, Users, CheckCircle2, AlertTriangle,
-  ArrowLeft, Search, Settings, HelpCircle, MessageSquare, Smartphone,
-  Activity, Clock, Zap, WifiOff, Globe,
+  ArrowLeft, Search, Settings, HelpCircle, MessageSquare, Smartphone, Send, RotateCcw, Mic,
 } from 'lucide-react'
 import { useWebSocket } from '../hooks/useWebSocket'
 import { useAccessibility } from '../hooks/useAccessibility'
+import { extractCards, DEMO_TREE_EN, DEMO_TREE_TWI } from '../data/conversationTree'
 
-const DEMO_CONVERSATION = [
-  { speaker: 'agent', text: 'Good afternoon, welcome to MTN service center. How can I help you today?', delay: 2200 },
-  { speaker: 'customer', text: 'I sent fifty Ghana cedis to my sister yesterday but she didn\'t receive it. My account was debited.', delay: 3200 },
-  { speaker: 'agent', text: 'I\'m sorry to hear that. Let me check the transaction for you. Can you tell me the phone number you sent to?', delay: 2600 },
-  { speaker: 'customer', text: 'Yes, it was zero two four four five six seven eight nine zero.', delay: 2400 },
-  { speaker: 'agent', text: 'Thank you. I can see the transaction. Reference number is REF88321. It shows fifty Ghana cedis was debited from your account on September twelfth at three forty five PM. The transaction is currently pending on the receiver side.', delay: 5000 },
-  { speaker: 'customer', text: 'What should I do? Will the money come back?', delay: 2200 },
-  { speaker: 'agent', text: 'I can initiate a reversal for you. The amount is GHS fifty point zero zero. Do you approve the refund?', delay: 3000 },
-  { speaker: 'customer', text: 'Yes please, approve the refund.', delay: 2000 },
-  { speaker: 'agent', text: 'I have approved the refund. Your money will be returned to your mobile money wallet within twenty four hours. Your case number is CASE45678. An SMS confirmation has been sent to your phone number ending in nine zero.', delay: 5000 },
-  { speaker: 'customer', text: 'Thank you so much. I can read everything on my screen. This is very helpful.', delay: 2800 },
-  { speaker: 'agent', text: 'You\'re welcome. If you have any other issues, please don\'t hesitate to visit us. Have a great day.', delay: 2600 },
+const AUTO_CUSTOMER_RESPONSES = [
+  'I sent money to my sister',
+  'I have an account issue',
+  'I need help with a transaction',
+  '0595759917',
+  'I don\'t have the number right now',
+  'What should I do?',
+  'Will the money come back?',
+  'Yes, please reverse it',
+  'I want a refund',
+  'Thank you',
+  'Thank you so much',
+  'My balance is incorrect',
+  'I can\'t access my account',
+  'There is an unauthorized charge',
+  'A MoMo transfer',
+  'A bank deposit',
+  'A bill payment',
 ]
-
-const DEMO_CONVERSATION_TWI = [
-  { speaker: 'agent', text: 'Ahobrasee, akwaaba wɔ MTN service center no. Dɛn na metumi ayɛ wo nnɛ?', delay: 2200 },
-  { speaker: 'customer', text: 'Mɛtrɛɛ Ghana cedis ahahanu kɔɔ me nuabea nkyɛn nnora, na ɔnnyaa. Me account no bɔɔ me ka.', delay: 3200 },
-  { speaker: 'agent', text: 'Mente ase. Ma me hwɛ transaction no. Bɛtumi ka wo telefon number no a wokɔɔ hɔ no?', delay: 2600 },
-  { speaker: 'customer', text: 'Aane, na ɛyɛ zero two four four five six seven eight nine zero.', delay: 2400 },
-  { speaker: 'agent', text: 'Medaase. Mɛ hu transaction no. Reference number yɛ REF88321. Ɛkyerɛ sɛ Ghana cedis ahahanu bɔɔ wo ka wɔ September twelfth, three forty five PM. Transaction no da so wɔ receiver nkyɛn.', delay: 5000 },
-  { speaker: 'customer', text: 'Dɛn na menyɛ? Sika no bɛsan aba?', delay: 2200 },
-  { speaker: 'agent', text: 'Metumi asan nkɔma wo. Sika no yɛ GHS fifty point zero zero. Wopɛ sɛ me ma refund?', delay: 3000 },
-  { speaker: 'customer', text: 'Aane, please ma me refund.', delay: 2000 },
-  { speaker: 'agent', text: 'Mɛma refund no. Wo sika bɛsan aba wo mobile money wallet mu wɔ nnɔnhwerehahanu mu. Wo case number yɛ CASE45678. SMS confirmation no akɔ wo telefon number a ɛwɔ nine zero no.', delay: 5000 },
-  { speaker: 'customer', text: 'Medaase pii. Metumi akenkan biribiara wɔ me screen so. Ɛyɛ hwee.', delay: 2800 },
-  { speaker: 'agent', text: 'Yɛ akyekyerɛ. Sɛ wo wɔ nsɛm foforo bi a, ɛnsɛ sɛ wo ho yɛ hu. Da biara wo nsa.', delay: 2600 },
-]
-
-function extractCards(text) {
-  const cards = []
-  const refMatch = text.match(/reference\s+number\s+is\s+([A-Z0-9]+)/i)
-  if (refMatch) cards.push({ id: 'card_ref', type: 'reference', label: 'Reference', value: refMatch[1], icon: '🔢' })
-  const caseMatch = text.match(/case\s+number\s+is\s+([A-Z0-9]+)/i)
-  if (caseMatch) cards.push({ id: 'card_case', type: 'reference', label: 'Case Number', value: caseMatch[1], icon: '📋' })
-  if (/\b(?:approve|reversal|refund)\b/i.test(text)) cards.push({ id: 'card_action', type: 'action', label: 'Action', value: 'Refund Approved', icon: '✅' })
-  if (/\bGHS\b|\b(?:fifty|cedis)\b/i.test(text)) cards.push({ id: 'card_amount', type: 'amount', label: 'Amount', value: 'GHS 50.00', icon: '💳' })
-  return cards
-}
 
 export default function AgentDashboard({ sessionId, onBack }) {
   const [language, setLanguage] = useState('en')
@@ -55,103 +36,89 @@ export default function AgentDashboard({ sessionId, onBack }) {
   const [connectionStatus, setConnectionStatus] = useState('connecting')
   const [smsSent, setSmsSent] = useState(false)
   const [caseNumber, setCaseNumber] = useState('')
-  const [customerResponse, setCustomerResponse] = useState('')
-  const [isRecording, setIsRecording] = useState(false)
+  const [agentInput, setAgentInput] = useState('')
   const [networkStatus, setNetworkStatus] = useState('online')
   const [offlineQueue, setOfflineQueue] = useState(0)
   const [ready, setReady] = useState(false)
-  const [isPlaying, setIsPlaying] = useState(false)
-  const [currentTurn, setCurrentTurn] = useState(0)
-  const [displayedText, setDisplayedText] = useState('')
-  const [liveSpeaker, setLiveSpeaker] = useState(null)
-  const [speed, setSpeed] = useState(1)
+  const [isRecording, setIsRecording] = useState(false)
+  const [showSidePanel, setShowSidePanel] = useState(false)
   const [activeTab, setActiveTab] = useState('transcript')
-  const intervalRef = useRef(null)
-  const timeoutRef = useRef(null)
-  const isPlayingRef = useRef(false)
-  const hasAutoStarted = useRef(false)
-  const messagesEndRef = useRef(null)
+  const [dualLanguage, setDualLanguage] = useState(false)
+  const [speakingId, setSpeakingId] = useState(null)
+  const [showSignIn, setShowSignIn] = useState(false)
+  const [agentName, setAgentName] = useState('')
+  const [agentId, setAgentId] = useState('')
+  const [agentRole, setAgentRole] = useState('Counter Support')
+  const [signInName, setSignInName] = useState('')
+  const [signInId, setSignInId] = useState('')
+  const [showHelp, setShowHelp] = useState(false)
+  const transcriptsContainerRef = useRef(null)
+  const isNearBottomRef = useRef(true)
+  const recognitionRef = useRef(null)
   const { currentFontSize } = useAccessibility()
-  const conversation = language === 'tw' ? DEMO_CONVERSATION_TWI : DEMO_CONVERSATION
-  const wsUrl = `ws://localhost:8000/ws/${sessionId}?language=${language}`
+  const safeSessionId = encodeURIComponent(sessionId || '')
+  const wsUrl = `${import.meta.env.VITE_BACKEND_URL || 'ws://localhost:8000'}/ws/${safeSessionId}?language=${language}`
 
-  const clearTimers = () => {
-    clearInterval(intervalRef.current)
-    clearTimeout(timeoutRef.current)
-    intervalRef.current = null
-    timeoutRef.current = null
+  const checkNearBottom = useCallback(() => {
+    const el = transcriptsContainerRef.current
+    if (!el) return true
+    const threshold = 80
+    return el.scrollHeight - el.scrollTop - el.clientHeight < threshold
+  }, [])
+
+  const scrollToBottom = useCallback((behavior = 'smooth') => {
+    const el = transcriptsContainerRef.current
+    if (!el) return
+    el.scrollTo({ top: el.scrollHeight, behavior })
+  }, [])
+
+  const addAgentMessage = (text) => {
+    setTranscripts(prev => [...prev, { speaker: 'agent', text, timestamp: Date.now() }])
+    const nextCards = extractCards(text)
+    setCards(prev => {
+      const merged = [...prev]
+      nextCards.forEach(card => { if (!merged.find(c => c.value === card.value)) merged.push(card) })
+      return merged
+    })
   }
 
-  const playTurn = (turnIndex) => {
-    clearTimers()
-    if (turnIndex >= conversation.length) {
-      setIsPlaying(false)
-      isPlayingRef.current = false
-      setDisplayedText('')
-      setLiveSpeaker(null)
-      return
-    }
-
-    setCurrentTurn(turnIndex)
-    const turn = conversation[turnIndex]
-    const words = turn.text.split(' ')
-    let wordIndex = 0
-    setLiveSpeaker(turn.speaker)
-    setDisplayedText('')
-
-    intervalRef.current = setInterval(() => {
-      if (wordIndex < words.length) {
-        setDisplayedText(prev => (prev ? prev + ' ' : '') + words[wordIndex])
-        wordIndex++
-      } else {
-        clearInterval(intervalRef.current)
-        intervalRef.current = null
-
-        setTranscripts(prev => [...prev, { speaker: turn.speaker, text: turn.text, timestamp: Date.now() + turnIndex }])
-        const nextCards = extractCards(turn.text)
-        setCards(prev => {
-          const merged = [...prev]
-          nextCards.forEach(card => { if (!merged.find(c => c.value === card.value)) merged.push(card) })
-          return merged
-        })
-
-        setDisplayedText('')
-        setLiveSpeaker(null)
-
-        timeoutRef.current = setTimeout(() => {
-          if (isPlayingRef.current) playTurn(turnIndex + 1)
-        }, turn.delay / speed)
-      }
-    }, 200 / speed)
+  const getTranslation = (nodeId, speaker) => {
+    if (!dualLanguage) return null
+    const otherLang = language === 'en' ? DEMO_TREE_TWI : DEMO_TREE_EN
+    const otherNode = otherLang[nodeId]
+    if (!otherNode) return null
+    return speaker === 'agent' ? otherNode?.agent : null
   }
 
-  const startDemo = () => {
-    setSpeed(1)
-    setIsPlaying(true)
-    isPlayingRef.current = true
-    setTranscripts([])
-    setCards([])
-    setCurrentTurn(0)
-    setDisplayedText('')
-    setLiveSpeaker(null)
-    playTurn(0)
+  const speakText = (text, id) => {
+    if (!window.speechSynthesis) return
+    window.speechSynthesis.cancel()
+    const utterance = new SpeechSynthesisUtterance(text)
+    utterance.lang = language === 'tw' ? 'tw-GH' : 'en-GH'
+    utterance.rate = 1
+    utterance.pitch = 1
+    utterance.volume = 1
+    utterance.onstart = () => setSpeakingId(id)
+    utterance.onend = () => setSpeakingId(null)
+    utterance.onerror = () => setSpeakingId(null)
+    window.speechSynthesis.speak(utterance)
   }
 
-  const pauseDemo = () => {
-    setIsPlaying(false)
-    isPlayingRef.current = false
-    clearTimers()
-    setDisplayedText('')
-    setLiveSpeaker(null)
+  const simulateCustomerResponse = () => {
+    const responses = AUTO_CUSTOMER_RESPONSES
+    const randomResponse = responses[Math.floor(Math.random() * responses.length)]
+    const delay = 1500 + Math.random() * 2000
+
+    setTimeout(() => {
+      setTranscripts(prev => [...prev, { speaker: 'customer', text: randomResponse, timestamp: Date.now() }])
+    }, delay)
   }
 
-  const resetDemo = () => {
-    pauseDemo()
-    setCurrentTurn(0)
-    setTranscripts([])
-    setCards([])
-    setSpeed(1)
-    hasAutoStarted.current = false
+  const sendAgentMessage = (text) => {
+    if (!text.trim()) return
+    addAgentMessage(text.trim())
+    setAgentInput('')
+    simulateCustomerResponse()
   }
 
   const handleMessage = useCallback((data) => {
@@ -161,13 +128,8 @@ export default function AgentDashboard({ sessionId, onBack }) {
           setTranscripts(prev => {
             const exists = prev.find(t => t.timestamp === data.timestamp)
             if (exists) return prev.map(t => t.timestamp === data.timestamp ? { ...t, ...data } : t)
-            return [...prev, data]
+            return [...prev, { ...data, translation: null }]
           })
-          setDisplayedText('')
-          setLiveSpeaker(null)
-        } else {
-          setDisplayedText(data.text)
-          setLiveSpeaker(data.speaker)
         }
         if (data.cards) {
           setCards(prev => {
@@ -181,7 +143,6 @@ export default function AgentDashboard({ sessionId, onBack }) {
         break
       case 'connected':
         setConnectionStatus('connected')
-        pauseDemo()
         break
       case 'status':
         setConnectionStatus(data.status === 'ended' ? 'ended' : data.status)
@@ -191,15 +152,44 @@ export default function AgentDashboard({ sessionId, onBack }) {
         setCaseNumber(data.data?.case_number || '')
         break
       case 'ack':
-        setCustomerResponse('')
+        setAgentInput('')
         break
       default:
         break
     }
-  }, [pauseDemo])
+  }, [])
 
   const onConnect = useCallback(() => setConnectionStatus('connected'), [])
   const onDisconnect = useCallback(() => setConnectionStatus('disconnected'), [])
+
+  const startRecording = () => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
+    if (!SpeechRecognition) {
+      alert('Speech recognition is not supported in this browser.')
+      return
+    }
+    const recognition = new SpeechRecognition()
+    recognition.lang = language === 'tw' ? 'tw-GH' : 'en-GH'
+    recognition.interimResults = true
+    recognition.continuous = false
+    recognitionRef.current = recognition
+
+    recognition.onstart = () => setIsRecording(true)
+    recognition.onend = () => setIsRecording(false)
+    recognition.onerror = () => setIsRecording(false)
+    recognition.onresult = (event) => {
+      const transcript = Array.from(event.results)
+        .map(result => result[0].transcript)
+        .join('')
+      setAgentInput(transcript)
+    }
+    recognition.start()
+  }
+
+  const stopRecording = () => {
+    recognitionRef.current?.stop()
+    setIsRecording(false)
+  }
 
   const { isConnected, error, connect, disconnect, send } = useWebSocket(
     wsUrl,
@@ -211,11 +201,29 @@ export default function AgentDashboard({ sessionId, onBack }) {
   useEffect(() => {
     connect()
     return () => disconnect()
-  }, [sessionId, connect, disconnect])
+  }, [sessionId, wsUrl, connect, disconnect])
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [transcripts, displayedText])
+    return () => {
+      recognitionRef.current?.stop()
+    }
+  }, [])
+
+  useEffect(() => {
+    const el = transcriptsContainerRef.current
+    if (!el) return
+    const handleScroll = () => {
+      isNearBottomRef.current = checkNearBottom()
+    }
+    el.addEventListener('scroll', handleScroll, { passive: true })
+    return () => el.removeEventListener('scroll', handleScroll)
+  }, [checkNearBottom])
+
+  useEffect(() => {
+    if (isNearBottomRef.current) {
+      scrollToBottom('smooth')
+    }
+  }, [transcripts, scrollToBottom])
 
   useEffect(() => {
     const onOnline = () => { setNetworkStatus('online'); setOfflineQueue(0) }
@@ -234,27 +242,22 @@ export default function AgentDashboard({ sessionId, onBack }) {
   }, [])
 
   useEffect(() => {
-    if (ready && !hasAutoStarted.current) {
-      hasAutoStarted.current = true
-      const t = setTimeout(() => startDemo(), 400)
-      return () => clearTimeout(t)
-    }
-  }, [ready])
+    if (!ready) return
+    setTranscripts([])
+    setCards([])
+    setConnectionStatus('connecting')
+    setSmsSent(false)
+    setCaseNumber('')
+    setAgentInput('')
+  }, [language, ready])
 
-  useEffect(() => {
-    return () => clearTimers()
-  }, [])
-
-  const sendResponse = (text) => {
+  const sendAgentResponse = (text) => {
     if (!text.trim()) return
-    const message = { type: 'response', data: { text, speaker: 'agent', timestamp: Date.now() } }
+    const message = { type: 'response', data: { text: text.trim(), speaker: 'agent', timestamp: Date.now() } }
     send(message)
-    setTranscripts(prev => [...prev, { type: 'transcript', text, speaker: 'agent', timestamp: Date.now(), is_local: true }])
-    setCustomerResponse('')
-  }
-
-  const toggleRecording = () => {
-    setIsRecording(prev => !prev)
+    addAgentMessage(text.trim())
+    setAgentInput('')
+    simulateCustomerResponse()
   }
 
   const resolveCase = () => {
@@ -266,6 +269,18 @@ export default function AgentDashboard({ sessionId, onBack }) {
 
   const escalateCase = () => {
     send({ type: 'status', status: 'escalated' })
+  }
+
+  const handleSignIn = () => {
+    if (!signInName.trim() || !signInId.trim()) {
+      alert('Please enter both Agent Name and Agent ID')
+      return
+    }
+    setAgentName(signInName.trim())
+    setAgentId(signInId.trim())
+    setShowSignIn(false)
+    setSignInName('')
+    setSignInId('')
   }
 
   const statusColor = connectionStatus === 'connected' ? '#10b981' : connectionStatus === 'connecting' ? '#f59e0b' : '#ef4444'
@@ -282,13 +297,20 @@ export default function AgentDashboard({ sessionId, onBack }) {
 
   return (
     <div className="agent-dashboard">
+      <a href="#agent-main" className="skip-link">Skip to main content</a>
       <aside className="agent-sidebar">
         <div className="agent-sidebar-header">
           <div className="agent-logo">
-            <Monitor size={22} />
-            <span>EchoText</span>
+            <img src={`/logo1.jpg?t=${Date.now()}`} alt="EchoText" className="agent-logo-img" />
+            
           </div>
-          <span className="agent-badge">Agent</span>
+          {agentName ? (
+            <span className="agent-badge agent-badge-signed-in">Signed in</span>
+          ) : (
+            <button className="agent-sign-in-btn" onClick={() => setShowSignIn(true)}>
+              Sign In
+            </button>
+          )}
         </div>
 
         <nav className="agent-nav">
@@ -315,11 +337,78 @@ export default function AgentDashboard({ sessionId, onBack }) {
             <User size={20} />
           </div>
           <div className="agent-user-info">
-            <div className="agent-user-name">Agent Kofi</div>
-            <div className="agent-user-role">Counter Support</div>
+            <div className="agent-user-name">{agentName || 'Agent'}</div>
+            <div className="agent-user-role">{agentRole}</div>
           </div>
         </div>
       </aside>
+
+      {showSignIn && (
+        <div className="agent-modal-overlay" onClick={() => setShowSignIn(false)}>
+          <div className="agent-modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-label="Agent sign in">
+            <h2 className="agent-modal-title">Agent Sign In</h2>
+            <p className="agent-modal-subtitle">Enter your details to access the dashboard</p>
+            <div className="agent-form-group">
+              <label className="agent-label" htmlFor="agent-signin-name">Agent Name</label>
+              <input
+                id="agent-signin-name"
+                className="agent-input"
+                type="text"
+                placeholder="e.g. Augustine Nana"
+                value={signInName}
+                onChange={(e) => setSignInName(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleSignIn()}
+              />
+            </div>
+            <div className="agent-form-group">
+              <label className="agent-label" htmlFor="agent-signin-id">Agent ID</label>
+              <input
+                id="agent-signin-id"
+                className="agent-input"
+                type="text"
+                placeholder="e.g. AGT-1042"
+                value={signInId}
+                onChange={(e) => setSignInId(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleSignIn()}
+              />
+            </div>
+            <div className="agent-modal-actions">
+              <button className="btn btn-secondary" onClick={() => setShowSignIn(false)}>Cancel</button>
+              <button className="btn btn-primary" onClick={handleSignIn}>Sign In</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showHelp && (
+        <div className="agent-modal-overlay" onClick={() => setShowHelp(false)}>
+          <div className="agent-modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-label="Help">
+            <h2 className="agent-modal-title">Help & Support</h2>
+            <p className="agent-modal-subtitle">Quick guide for using the agent dashboard</p>
+            <div className="agent-help-list">
+              <div className="agent-help-item">
+                <strong>Transcript</strong>
+                <p>View live captions, toggle languages, and read aloud messages.</p>
+              </div>
+              <div className="agent-help-item">
+                <strong>Customer</strong>
+                <p>See customer details, phone number, and session history.</p>
+              </div>
+              <div className="agent-help-item">
+                <strong>Case</strong>
+                <p>Manage cases, send SMS confirmations, and escalate issues.</p>
+              </div>
+              <div className="agent-help-item">
+                <strong>Settings</strong>
+                <p>Switch language, enable dual subtitles, and view session info.</p>
+              </div>
+            </div>
+            <div className="agent-modal-actions">
+              <button className="btn btn-primary" onClick={() => setShowHelp(false)}>Got it</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="agent-body">
         <header className="agent-topbar">
@@ -336,39 +425,24 @@ export default function AgentDashboard({ sessionId, onBack }) {
             </div>
           </div>
           <div className="agent-topbar-right">
-            <div className="agent-metrics">
-              <div className="agent-metric">
-                <Zap size={14} />
-                <span className="agent-metric-value">&lt;1.5s</span>
-                <span>Latency</span>
-              </div>
-              <div className="agent-metric">
-                <Activity size={14} />
-                <span className="agent-metric-value">98%</span>
-                <span>Confidence</span>
-              </div>
-              <div className="agent-metric">
-                <Clock size={14} />
-                <span className="agent-metric-value">~4 min</span>
-                <span>Resolution</span>
-              </div>
-              {offlineQueue > 0 && (
-                <div className="offline-queue-badge">
-                  <WifiOff size={14} />
-                  <span>{offlineQueue} queued</span>
-                </div>
-              )}
+            <div className="agent-lang-toggle">
+              <button className={'lang-btn' + (language === 'en' ? ' active' : '')} onClick={() => setLanguage('en')}>EN</button>
+              <button className={'lang-btn' + (language === 'tw' ? ' active' : '')} onClick={() => setLanguage('tw')}>TW</button>
             </div>
+            <button className={'lang-btn' + (dualLanguage ? ' active' : '')} onClick={() => setDualLanguage(prev => !prev)}>EN+TW</button>
             <div className="agent-search">
               <Search size={16} />
-              <input type="text" placeholder="Search session..." />
+              <input id="agent-search-input" type="text" placeholder="Search session..." />
             </div>
-            <button className="btn-icon" aria-label="Help"><HelpCircle size={20} /></button>
-            <button className="btn-icon" aria-label="Settings"><Settings size={20} /></button>
+            <button className="btn-icon" onClick={() => setShowHelp(true)} aria-label="Help"><HelpCircle size={20} /></button>
+            <button className="btn-icon" onClick={() => setActiveTab('settings')} aria-label="Settings"><Settings size={20} /></button>
+            <button className="btn-icon agent-mobile-sidebar-toggle" onClick={() => setShowSidePanel(false)} aria-label="Close panel">
+              <X size={20} />
+            </button>
           </div>
         </header>
 
-        <main className="agent-content">
+        <main id="agent-main" className="agent-content">
           {activeTab === 'transcript' && (
             <div className="agent-layout">
               <div className="agent-main-panel">
@@ -376,11 +450,19 @@ export default function AgentDashboard({ sessionId, onBack }) {
                   <div className="agent-card-header">
                     <h2>Live Transcript</h2>
                     <div className="agent-badges">
-                      <span className="agent-badge-live">LIVE</span>
+                      <span className="agent-badge-live">
+                        LIVE
+                        <span className="agent-live-wave">
+                          <span></span>
+                          <span></span>
+                          <span></span>
+                          <span></span>
+                        </span>
+                      </span>
                       <span className="agent-badge-lang">EN / TW</span>
                     </div>
                   </div>
-                  <div className="agent-transcripts">
+                  <div className="agent-transcripts" ref={transcriptsContainerRef}>
                     <AnimatePresence>
                       {transcripts.map((transcript, index) => (
                         <motion.div
@@ -394,62 +476,51 @@ export default function AgentDashboard({ sessionId, onBack }) {
                             <span className="agent-avatar-sm">
                               {transcript.speaker === 'agent' ? <User size={14} /> : <Users size={14} />}
                             </span>
-                            <span className="agent-chat-name">{transcript.speaker === 'agent' ? 'You' : 'Customer'}</span>
+                            <span className="agent-chat-name">{transcript.speaker === 'agent' ? 'Agent' : 'Customer'}</span>
                             <span className="agent-chat-time">Now</span>
                           </div>
-                          <p className="agent-chat-text">{transcript.text}</p>
+                          <div className="agent-chat-text-wrap">
+                            <p className="agent-chat-text" style={{ fontSize: currentFontSize, direction: 'ltr' }}>{transcript.text}</p>
+                            {dualLanguage && transcript.translation && (
+                              <p className="agent-chat-text agent-chat-text-secondary" style={{ fontSize: currentFontSize, direction: 'ltr' }}>{transcript.translation}</p>
+                            )}
+                          </div>
+                          <button className="agent-chat-tts" onClick={() => speakText(transcript.text, transcript.timestamp)} aria-label="Read aloud">
+                            {speakingId === transcript.timestamp ? '🔊' : '🔈'}
+                          </button>
                         </motion.div>
                       ))}
                     </AnimatePresence>
-
-                      {liveSpeaker && displayedText && (
-                      <motion.div
-                        className={'agent-chat-bubble ' + liveSpeaker + ' agent-chat-live'}
-                        initial={{ opacity: 0, y: 8 }}
-                        animate={{ opacity: 1, y: 0 }}
-                      >
-                        <div className="agent-chat-header">
-                          <span className="agent-avatar-sm">
-                            {liveSpeaker === 'agent' ? <User size={14} /> : <Users size={14} />}
-                          </span>
-                          <span className="agent-chat-name">{liveSpeaker === 'agent' ? 'You' : 'Customer'}</span>
-                          <span className="agent-chat-time">Now</span>
-                        </div>
-                        <p className="agent-chat-text">
-                          {displayedText}
-                          <span className="agent-typing-cursor" />
-                        </p>
-                      </motion.div>
-                    )}
-                    <div ref={messagesEndRef} />
                   </div>
 
-                  <div className="agent-playback">
-                    <div className="agent-playback-controls">
-                      {!isPlaying ? (
-                        <button className="agent-btn-primary" onClick={startDemo}><Play size={16} /> Play</button>
-                      ) : (
-                        <button className="agent-btn-secondary" onClick={pauseDemo}><Pause size={16} /> Pause</button>
-                      )}
-                      <button className="agent-btn-secondary" onClick={resetDemo}><RotateCcw size={16} /> Reset</button>
-                    </div>
-                    <div className="agent-speed-control">
-                      <span className="agent-speed-label">Speed</span>
-                      {[0.5, 1, 1.5].map(s => (
-                        <button
-                          key={s}
-                          onClick={() => { setSpeed(s); if (isPlayingRef.current) playTurn(currentTurn) }}
-                          className={'agent-speed-btn' + (speed === s ? ' active' : '')}
-                        >
-                          {s}x
-                        </button>
-                      ))}
+                  <div className="agent-response-area">
+                    <div className="agent-input-row">
+                      <input
+                        id="agent-message-input"
+                        type="text"
+                        value={agentInput}
+                        onChange={(e) => setAgentInput(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && sendAgentMessage(agentInput)}
+                        placeholder="Type your message or use voice..."
+                        aria-label="Agent message"
+                        style={{ fontSize: currentFontSize }}
+                      />
+                      <button
+                        className={'agent-mic-btn' + (isRecording ? ' recording' : '')}
+                        onClick={isRecording ? stopRecording : startRecording}
+                        aria-label={isRecording ? 'Stop recording' : 'Start voice input'}
+                      >
+                        <Mic size={18} />
+                      </button>
+                      <button className="btn btn-primary btn-sm" onClick={() => sendAgentMessage(agentInput)} disabled={!agentInput.trim()} aria-label="Send message">
+                        <Send size={16} />
+                      </button>
                     </div>
                   </div>
                 </div>
               </div>
 
-              <div className="agent-side-panel">
+              <div className={'agent-side-panel' + (showSidePanel ? ' open' : '')}>
                 <div className="agent-card agent-customer-card">
                   <div className="agent-customer-header">
                     <div className="agent-avatar-lg">
@@ -466,7 +537,7 @@ export default function AgentDashboard({ sessionId, onBack }) {
                       <div className="agent-stat-label">Messages</div>
                     </div>
                     <div className="agent-stat">
-                      <div className="agent-stat-value">EN</div>
+                      <div className="agent-stat-value">{language.toUpperCase()}</div>
                       <div className="agent-stat-label">Language</div>
                     </div>
                     <div className="agent-stat">
@@ -497,11 +568,11 @@ export default function AgentDashboard({ sessionId, onBack }) {
                 <div className="agent-card agent-quick-actions">
                   <h3 className="agent-card-title">Quick Actions</h3>
                   <div className="agent-actions-grid">
-                    <button className="agent-action-btn" onClick={toggleRecording}>
+                    <button className="agent-action-btn" onClick={() => { setTranscripts([]); setCards([]); setCaseNumber(''); setSmsSent(false); }}>
                       <div className="agent-action-icon">
-                        {isRecording ? <Square size={18} /> : <Mic size={18} />}
+                        <RotateCcw size={18} />
                       </div>
-                      <span>{isRecording ? 'Stop Recording' : 'Start Recording'}</span>
+                      <span>Reset</span>
                     </button>
                     <button className="agent-action-btn" onClick={resolveCase}>
                       <div className="agent-action-icon">
@@ -530,9 +601,25 @@ export default function AgentDashboard({ sessionId, onBack }) {
                     <div className="sms-phone-body">
                       <div className="sms-phone-to">To: +233 XX XXX XXXX</div>
                       <div className="sms-phone-message">
-                        EchoText Ghana: Your support case {caseNumber || 'CASE45678'} has been confirmed. Your refund of GHS 50.00 has been approved. Funds will arrive within 24 hours.
+                         EchoText Ghana: Your support case {caseNumber || 'CASE45678'} has been confirmed. Your refund of fifty Ghana cedis has been approved. Funds will arrive within twenty-four hours.
                       </div>
                       <div className="sms-phone-meta">Delivered via SMS Gateway</div>
+                    </div>
+                  </motion.div>
+                )}
+
+                {smsSent && (
+                  <motion.div
+                    className="agent-progress-tracker"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                  >
+                    <div className="agent-progress-header">
+                      <span className="agent-progress-title">Resolution Progress</span>
+                      <span className="agent-progress-status">In Progress</span>
+                    </div>
+                    <div className="agent-progress-bar">
+                      <div className="agent-progress-fill" style={{ width: '65%' }} />
                     </div>
                   </motion.div>
                 )}
@@ -541,30 +628,165 @@ export default function AgentDashboard({ sessionId, onBack }) {
           )}
 
           {activeTab === 'customer' && (
-            <div className="agent-placeholder">
-              <User size={48} />
-              <h3>Customer Profile</h3>
-              <p>Customer details and history would appear here.</p>
+            <div className="agent-customer-view">
+              <div className="agent-card">
+                <h2 className="agent-card-title">Customer Profile</h2>
+                <div className="agent-customer-details">
+                  <div className="agent-detail-item">
+                    <span className="agent-detail-icon">👤</span>
+                    <div className="agent-detail-content">
+                      <span className="agent-detail-label">Name</span>
+                      <span className="agent-detail-value">Augustine Nana</span>
+                    </div>
+                  </div>
+                  <div className="agent-detail-item">
+                    <span className="agent-detail-icon">📱</span>
+                    <div className="agent-detail-content">
+                      <span className="agent-detail-label">Phone</span>
+                      <span className="agent-detail-value">0595759917</span>
+                    </div>
+                  </div>
+                  <div className="agent-detail-item">
+                    <span className="agent-detail-icon">🆔</span>
+                    <div className="agent-detail-content">
+                      <span className="agent-detail-label">National ID</span>
+                      <span className="agent-detail-value">GHA-156438876-9</span>
+                    </div>
+                  </div>
+                  <div className="agent-detail-item">
+                    <span className="agent-detail-icon">📶</span>
+                    <div className="agent-detail-content">
+                      <span className="agent-detail-label">Network</span>
+                      <span className="agent-detail-value">MTN Ghana</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="agent-card">
+                <h2 className="agent-card-title">Session History</h2>
+                <div className="agent-session-list">
+                  <div className="agent-session-item">
+                    <div>
+                      <div className="agent-session-title">MoMo Refund Issue</div>
+                      <div className="agent-session-meta">Today • {language.toUpperCase()}</div>
+                    </div>
+                    <span className="agent-session-status">Active</span>
+                  </div>
+                  <div className="agent-session-item">
+                    <div>
+                      <div className="agent-session-title">Balance Inquiry</div>
+                      <div className="agent-session-meta">Yesterday • EN</div>
+                    </div>
+                    <span className="agent-session-status agent-session-resolved">Resolved</span>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
 
           {activeTab === 'case' && (
-            <div className="agent-placeholder">
-              <CheckCircle2 size={48} />
-              <h3>Case Management</h3>
-              <p>Case history and resolution tools would appear here.</p>
+            <div className="agent-case-view">
+              <div className="agent-card">
+                <h2 className="agent-card-title">Current Case</h2>
+                <div className="agent-case-header">
+                  <div>
+                    <div className="agent-case-number">{caseNumber || 'CASE45678'}</div>
+                    <div className="agent-case-meta">Opened today • MTN Service Center</div>
+                  </div>
+                  <span className={`agent-case-status ${smsSent ? 'resolved' : 'open'}`}>
+                    {smsSent ? 'Resolved' : 'Open'}
+                  </span>
+                </div>
+                <div className="agent-case-actions">
+                  <button className="btn btn-primary btn-sm" onClick={resolveCase} disabled={smsSent}>
+                    <Smartphone size={16} />
+                    {smsSent ? 'SMS Sent' : 'Resolve & SMS'}
+                  </button>
+                  <button className="btn btn-secondary btn-sm" onClick={escalateCase}>
+                    <AlertTriangle size={16} />
+                    Escalate
+                  </button>
+                  <button className="btn btn-secondary btn-sm" onClick={() => { setTranscripts([]); setCards([]); setCaseNumber(''); setSmsSent(false); }}>
+                    <RotateCcw size={16} />
+                    New Case
+                  </button>
+                </div>
+              </div>
+
+              <div className="agent-card">
+                <h2 className="agent-card-title">Case Notes</h2>
+                <div className="agent-case-notes">
+                  <div className="agent-case-note">
+                    <div className="agent-case-note-header">
+                      <span className="agent-case-note-time">10:42 AM</span>
+                      <span className="agent-case-note-author">Agent</span>
+                    </div>
+                    <p>Customer reported failed MoMo transfer. Fifty Ghana cedis debited but not received. Reference REF88321.</p>
+                  </div>
+                  {smsSent && (
+                    <div className="agent-case-note">
+                      <div className="agent-case-note-header">
+                        <span className="agent-case-note-time">10:45 AM</span>
+                        <span className="agent-case-note-author">System</span>
+                      </div>
+                      <p>Refund approved. SMS confirmation sent to customer.</p>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           )}
 
           {activeTab === 'settings' && (
-            <div className="agent-placeholder">
-              <Settings size={48} />
-              <h3>Agent Settings</h3>
-              <p>Preferences, shortcuts, and integrations would appear here.</p>
+            <div className="agent-settings-view">
+              <div className="agent-card">
+                <h2 className="agent-card-title">Agent Settings</h2>
+                <div className="agent-settings-list">
+                  <div className="agent-setting-item">
+                    <div>
+                      <div className="agent-setting-label">Language</div>
+                      <div className="agent-setting-desc">Default transcript language</div>
+                    </div>
+                    <div className="agent-lang-toggle">
+                      <button className={'lang-btn' + (language === 'en' ? ' active' : '')} onClick={() => setLanguage('en')}>EN</button>
+                      <button className={'lang-btn' + (language === 'tw' ? ' active' : '')} onClick={() => setLanguage('tw')}>TW</button>
+                    </div>
+                  </div>
+                  <div className="agent-setting-item">
+                    <div>
+                      <div className="agent-setting-label">Dual-Language Subtitles</div>
+                      <div className="agent-setting-desc">Show EN + TW simultaneously</div>
+                    </div>
+                    <button className={'lang-btn' + (dualLanguage ? ' active' : '')} onClick={() => setDualLanguage(prev => !prev)}>
+                      {dualLanguage ? 'On' : 'Off'}
+                    </button>
+                  </div>
+                  <div className="agent-setting-item">
+                    <div>
+                      <div className="agent-setting-label">Session</div>
+                      <div className="agent-setting-desc">Current session ID</div>
+                    </div>
+                    <span className="agent-setting-value">{sessionId}</span>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
         </main>
       </div>
+
+      <div
+        className={'agent-mobile-overlay' + (showSidePanel ? ' open' : '')}
+        onClick={() => setShowSidePanel(false)}
+      />
+      <button
+        className="agent-mobile-toggle"
+        onClick={() => setShowSidePanel(true)}
+        aria-label="Open side panel"
+      >
+        <MessageSquare size={22} />
+      </button>
     </div>
   )
 }

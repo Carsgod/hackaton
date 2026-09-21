@@ -25,6 +25,11 @@ export default function CompletionScreen({ caseNumber, status, onBack }) {
           </div>
         </div>
 
+        <div className="completion-progress">
+          <span className="completion-progress-dot" />
+          <span className="completion-progress-text">Resolution completed successfully</span>
+        </div>
+
         <div className="completion-actions">
           <button className="btn btn-primary" onClick={onBack}>
             <ArrowLeft size={16} /> Back to Home

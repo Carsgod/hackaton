@@ -8,7 +8,7 @@ import base64
 import logging
 from typing import List, Dict, Optional
 from datetime import datetime
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Query
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel
@@ -24,6 +24,12 @@ except ImportError:
 
 from asr_simulator import ASRSimulator, TranscriptSegment
 from nlp_processor import NLPProcessor
+
+try:
+    from deep_translator import GoogleTranslator
+    HAS_TRANSLATOR = True
+except ImportError:
+    HAS_TRANSLATOR = False
 
 
 app = FastAPI(title="EchoText Ghana API", version="1.0.0")
@@ -47,6 +53,11 @@ class Session(BaseModel):
     transcripts: List[Dict] = []
     cards: List[Dict] = []
     connected_at: float = 0
+
+
+class TranslationRequest(BaseModel):
+    tree: Dict
+    target_language: str = "tw"
 
 
 class SMSRequest(BaseModel):
@@ -140,10 +151,68 @@ class ConnectionManager:
 
 manager = ConnectionManager()
 
+TRANSLATION_CACHE: Dict[str, Dict] = {}
+
+LANGUAGE_CODE_MAP = {
+    "tw": "ak",
+    "en": "en",
+}
+
+
+def _translate_batch(texts: List[str], target_language: str) -> List[str]:
+    if not texts:
+        return []
+    lang_code = LANGUAGE_CODE_MAP.get(target_language, target_language)
+    try:
+        translated = GoogleTranslator(source="en", target=lang_code).translate_batch(texts)
+        return translated
+    except Exception:
+        logger.exception("Batch translation failed for target=%s", target_language)
+        return texts
+
+
+def _translate_tree_nodes(tree: Dict, target_language: str) -> Dict:
+    texts = []
+    text_map: Dict[str, int] = {}
+
+    def collect(node: Dict):
+        if "agent" in node and node["agent"] not in text_map:
+            text_map[node["agent"]] = len(texts)
+            texts.append(node["agent"])
+        for option in node.get("options", []):
+            label = option.get("label", "")
+            if label and label not in text_map:
+                text_map[label] = len(texts)
+                texts.append(label)
+
+    for node in tree.values():
+        collect(node)
+
+    translated_texts = _translate_batch(texts, target_language)
+    result = {}
+    for node_id, node in tree.items():
+        new_node = dict(node)
+        if "agent" in node:
+            idx = text_map.get(node["agent"])
+            if idx is not None and idx < len(translated_texts):
+                new_node["agent"] = translated_texts[idx]
+        if "options" in node:
+            new_node["options"] = [
+                {**option, "label": translated_texts[text_map[option["label"]]] if option.get("label") in text_map else option.get("label", "")}
+                for option in node.get("options", [])
+            ]
+        result[node_id] = new_node
+    return result
+
 
 @app.get("/api/health")
 async def health():
     return {"status": "ok", "service": "EchoText Ghana API", "version": "1.0.0"}
+
+
+@app.post("/api/translate/tree")
+async def translate_conversation_tree(request: TranslationRequest):
+    return {"tree": _translate_tree_nodes(request.tree, request.target_language)}
 
 
 @app.get("/api/qr/{counter_id}")
@@ -224,7 +293,10 @@ async def get_session(session_id: str):
         "created_at": session.created_at,
         "transcript_count": len(session.transcripts),
         "cards": session.cards,
-        "summary": manager.asr.get_session_summary(),
+        "summary": {
+            "total_turns": len(session.transcripts),
+            "cards": len(session.cards),
+        },
     }
 
 

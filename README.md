@@ -34,26 +34,30 @@ The frontend will start at `http://localhost:3000`
 ## 🎯 Features
 
 ### MVP Demo Journey
-A Deaf customer visits an MTN service center to resolve a failed MoMo transaction. She scans the desk QR code, reads the agent's spoken explanation live on her screen, approves the refund details, and leaves with a saved transcript and an SMS confirmation ticket containing her case number. She resolves her issue independently, without an interpreter, in under five minutes.
+A Deaf customer visits an MTN service center to resolve a failed MoMo transaction. She scans the desk QR code, reads the agent's spoken explanation live on her screen, responds using quick-choice prompts or typing, approves the refund details, and leaves with a saved transcript and an SMS confirmation ticket containing her case number. She resolves her issue independently, without an interpreter, in under five minutes.
 
 ### Core Features
-- **Live Transcription** - Real-time speech-to-text with &lt;1.5s latency
+- **Live Transcription** - Real-time speech-to-text with <1.5s latency
 - **Pinned Cards** - Reference numbers, amounts, and actions highlighted visually
 - **Quick Responses** - Type or tap preset prompts to communicate instantly
 - **QR Code Scanning** - Scan counter QR codes to join live sessions
 - **SMS Confirmation** - Get case numbers and resolution details via SMS
 - **USSD Pathway** - Feature phone support via *920*88#
 - **Multi-Language** - English and Twi (Ga and Ewe planned)
-- **Accessibility First** - Adjustable text sizes, high contrast, screen reader support
+- **Dual-Language Subtitles** - Toggle EN+TW to see both languages simultaneously
+- **Text-to-Speech** - Read aloud any transcript bubble for auditory reinforcement
+- **Accessibility First** - Adjustable text sizes, high contrast, screen reader support, reduced motion
 
 ### Accessibility Features
 - **Adjustable Font Sizes** - Small, Medium, Large, Extra Large
 - **High Contrast Mode** - Enhanced visibility for low-vision users
 - **Dark/Light Theme** - User preference
 - **Screen Reader Compatible** - All content is accessible via assistive technology
-- **Reduced Motion** - Respects user motion preferences
+- **Reduced Motion** - Respects system motion preferences
+- **Skip Links** - Keyboard-friendly navigation to main content
 - **Offline Caching** - Data syncs automatically when connection resumes
 - **Large Touch Targets** - Mobile-friendly interface
+- **Onboarding hints** - First-time user guidance
 
 ## 🛠️ Tech Stack
 
@@ -110,6 +114,12 @@ The frontend includes a built-in Demo Mode that simulates a complete customer su
 4. Adjust playback speed (0.5x, 1x, 1.5x)
 5. Pause, skip, or reset at any time
 
+### Demo Narrative for Presentations
+- **Problem**: Deaf customers in Ghana rely on interpreters or written notes for service desk support, which is slow, private, and error-prone.
+- **Solution**: EchoText turns the agent's spoken words into live captions, pinned action cards, and SMS confirmations—no app download, no interpreter, no wait.
+- **Flow**: QR scan → live transcript → quick response → SMS confirmation → case closure in under 5 minutes.
+- **Local fit**: MTN branding, Ghana cedis, +233 numbers, USSD fallback *920*88#, English + Twi.
+
 ## 🔧 API Endpoints
 
 ### REST API
@@ -132,6 +142,7 @@ The frontend includes a built-in Demo Mode that simulates a complete customer su
 - Screen reader tested
 - Keyboard navigation support
 - Focus indicators on all interactive elements
+- Reduced motion support
 
 ### Visual Design
 - Modern gradient aesthetics
@@ -141,7 +152,7 @@ The frontend includes a built-in Demo Mode that simulates a complete customer su
 - High contrast text
 
 ### User Experience
-- &lt;1.5s transcription latency
+- <1.5s transcription latency
 - No app download required
 - Works on any smartphone browser
 - Offline-first with auto-sync
@@ -149,8 +160,8 @@ The frontend includes a built-in Demo Mode that simulates a complete customer su
 
 ## 📊 Performance Targets
 
-- **Latency**: &lt;1.5 seconds end-to-end
-- **WER (Word Error Rate)**: &lt;10% in optimal conditions
+- **Latency**: <1.5 seconds end-to-end
+- **WER (Word Error Rate)**: <10% in optimal conditions
 - **Task Completion**: Under 5 minutes for standard support queries
 - **Comprehension**: 95% user understanding in user testing
 

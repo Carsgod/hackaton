@@ -5,12 +5,11 @@ const DEMO_CONVERSATION = [
   { speaker: 'agent', text: 'Good afternoon, welcome to MTN service center. How can I help you today?', delay: 1800 },
   { speaker: 'customer', text: 'I sent fifty Ghana cedis to my sister yesterday but she didn\'t receive it. My account was debited.', delay: 2800 },
   { speaker: 'agent', text: 'I\'m sorry to hear that. Let me check the transaction for you. Can you tell me the phone number you sent to?', delay: 2400 },
-  { speaker: 'customer', text: 'Yes, it was zero two four four five six seven eight nine zero.', delay: 2200 },
+  { speaker: 'customer', text: 'Yes, it was zero two four four five five six two two.', delay: 2200 },
   { speaker: 'agent', text: 'Thank you. I can see the transaction. Reference number is REF88321. It shows fifty Ghana cedis was debited from your account on September twelfth at three forty five PM. The transaction is currently pending on the receiver side.', delay: 4200 },
-  { speaker: 'customer', text: 'What should I do? Will the money come back?', delay: 2000 },
   { speaker: 'agent', text: 'I can initiate a reversal for you. The amount is GHS fifty point zero zero. Do you approve the refund?', delay: 2600 },
   { speaker: 'customer', text: 'Yes please, approve the refund.', delay: 1800 },
-  { speaker: 'agent', text: 'I have approved the refund. Your money will be returned to your mobile money wallet within twenty four hours. Your case number is CASE45678. An SMS confirmation has been sent to your phone number ending in nine zero.', delay: 4200 },
+  { speaker: 'agent', text: 'I have approved the refund. Your money will be returned to your mobile money wallet within twenty-four hours. Your case number is CASE45678. An SMS confirmation has been sent to your phone number ending in nine zero.', delay: 4200 },
   { speaker: 'customer', text: 'Thank you so much. I can read everything on my screen. This is very helpful.', delay: 2400 },
   { speaker: 'agent', text: 'You\'re welcome. If you have any other issues, please don\'t hesitate to visit us. Have a great day.', delay: 2400 },
 ]
@@ -30,19 +29,22 @@ export default function DemoMode({ sessionId, onClose }) {
   const extractCards = (text) => {
     const next = []
     const lower = text.toLowerCase()
-    if (/\b(?:ghs|ghana\s+cedis?|cedis?)\b|\b\d+(?:\.\d{1,2})?\b/.test(lower) && (/\b(?:amount|fifty|ghs)\b/.test(lower) || /ref88321|cash?/i.test(text))) {
-      next.push({ id: 'card_amount', type: 'amount', label: 'Amount', value: 'GHS 50.00', icon: '💳' })
+    let cardIndex = 0
+    const amountMatch = text.match(/(?:GHS\s+)?(fifty|twenty|fifteen|one hundred|five hundred)\s+Ghana\s+cedis|GHS\s+(\d+(?:\.\d{1,2})?)/i)
+    if (amountMatch && (/\b(?:amount|fifty|ghs|ref88321|cash)\b/i.test(text) || /ref88321|cash?/i.test(text))) {
+      const amountValue = amountMatch[1] ? amountMatch[1] + ' Ghana cedis' : 'GHS ' + amountMatch[2]
+      next.push({ id: `card_amount_${cardIndex++}`, type: 'amount', label: 'Amount', value: amountValue, icon: '💳' })
     }
     const refMatch = text.match(/reference\s+number\s+is\s+([A-Z0-9]+)/i)
     if (refMatch) {
-      next.push({ id: 'card_ref', type: 'reference', label: 'Reference', value: refMatch[1], icon: '🔢' })
+      next.push({ id: `card_ref_${refMatch[1]}`, type: 'reference', label: 'Reference', value: refMatch[1], icon: '🔢' })
     }
     const caseMatch = text.match(/case\s+number\s+is\s+([A-Z0-9]+)/i)
     if (caseMatch) {
-      next.push({ id: 'card_case', type: 'reference', label: 'Case Number', value: caseMatch[1], icon: '📋' })
+      next.push({ id: `card_case_${caseMatch[1]}`, type: 'reference', label: 'Case Number', value: caseMatch[1], icon: '📋' })
     }
     if (/approve|reversal|reversed|approved/i.test(text)) {
-      next.push({ id: 'card_action', type: 'action', label: 'Action', value: 'Refund Approved', icon: '✅' })
+      next.push({ id: `card_action_${cardIndex++}`, type: 'action', label: 'Action', value: 'Refund Approved', icon: '✅' })
     }
     return next
   }

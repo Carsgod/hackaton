@@ -1,64 +1,28 @@
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Play, Pause, RotateCcw, SkipForward, X, Volume2, CheckCircle2, ArrowLeft, Activity, Clock, Zap, Wifi, WifiOff, Smartphone, Globe } from 'lucide-react'
-
-const DEMO_CONVERSATION = [
-  { speaker: 'agent', text: 'Good afternoon, welcome to MTN service center. How can I help you today?', delay: 2200 },
-  { speaker: 'customer', text: 'I sent fifty Ghana cedis to my sister yesterday but she didn\'t receive it. My account was debited.', delay: 3200 },
-  { speaker: 'agent', text: 'I\'m sorry to hear that. Let me check the transaction for you. Can you tell me the phone number you sent to?', delay: 2600 },
-  { speaker: 'customer', text: 'Yes, it was zero two four four five six seven eight nine zero.', delay: 2400 },
-  { speaker: 'agent', text: 'Thank you. I can see the transaction. Reference number is REF88321. It shows fifty Ghana cedis was debited from your account on September twelfth at three forty five PM. The transaction is currently pending on the receiver side.', delay: 5000 },
-  { speaker: 'customer', text: 'What should I do? Will the money come back?', delay: 2200 },
-  { speaker: 'agent', text: 'I can initiate a reversal for you. The amount is GHS fifty point zero zero. Do you approve the refund?', delay: 3000 },
-  { speaker: 'customer', text: 'Yes please, approve the refund.', delay: 2000 },
-  { speaker: 'agent', text: 'I have approved the refund. Your money will be returned to your mobile money wallet within twenty four hours. Your case number is CASE45678. An SMS confirmation has been sent to your phone number ending in nine zero.', delay: 5000 },
-  { speaker: 'customer', text: 'Thank you so much. I can read everything on my screen. This is very helpful.', delay: 2800 },
-  { speaker: 'agent', text: 'You\'re welcome. If you have any other issues, please don\'t hesitate to visit us. Have a great day.', delay: 2600 },
-]
-
-const DEMO_CONVERSATION_TWI = [
-  { speaker: 'agent', text: 'Ahobrasee, akwaaba wɔ MTN service center no. Dɛn na metumi ayɛ wo nnɛ?', delay: 2200 },
-  { speaker: 'customer', text: 'Mɛtrɛɛ Ghana cedis ahahanu kɔɔ me nuabea nkyɛn nnora, na ɔnnyaa. Me account no bɔɔ me ka.', delay: 3200 },
-  { speaker: 'agent', text: 'Mente ase. Ma me hwɛ transaction no. Bɛtumi ka wo telefon number no a wokɔɔ hɔ no?', delay: 2600 },
-  { speaker: 'customer', text: 'Aane, na ɛyɛ zero two four four five six seven eight nine zero.', delay: 2400 },
-  { speaker: 'agent', text: 'Medaase. Mɛ hu transaction no. Reference number yɛ REF88321. Ɛkyerɛ sɛ Ghana cedis ahahanu bɔɔ wo ka wɔ September twelfth, three forty five PM. Transaction no da so wɔ receiver nkyɛn.', delay: 5000 },
-  { speaker: 'customer', text: 'Dɛn na menyɛ? Sika no bɛsan aba?', delay: 2200 },
-  { speaker: 'agent', text: 'Metumi asan nkɔma wo. Sika no yɛ GHS fifty point zero zero. Wopɛ sɛ me ma refund?', delay: 3000 },
-  { speaker: 'customer', text: 'Aane, please ma me refund.', delay: 2000 },
-  { speaker: 'agent', text: 'Mɛma refund no. Wo sika bɛsan aba wo mobile money wallet mu wɔ nnɔnhwerehahanu mu. Wo case number yɛ CASE45678. SMS confirmation no akɔ wo telefon number a ɛwɔ nine zero no.', delay: 5000 },
-  { speaker: 'customer', text: 'Medaase pii. Metumi akenkan biribiara wɔ me screen so. Ɛyɛ hwee.', delay: 2800 },
-  { speaker: 'agent', text: 'Yɛ akyekyerɛ. Sɛ wo wɔ nsɛm foforo bi a, ɛnsɛ sɛ wo ho yɛ hu. Da biara wo nsa.', delay: 2600 },
-]
-
-function extractCards(text) {
-  const cards = []
-  const refMatch = text.match(/reference\s+number\s+is\s+([A-Z0-9]+)/i)
-  if (refMatch) cards.push({ id: 'card_ref', type: 'reference', label: 'Reference', value: refMatch[1], icon: '🔢' })
-  const caseMatch = text.match(/case\s+number\s+is\s+([A-Z0-9]+)/i)
-  if (caseMatch) cards.push({ id: 'card_case', type: 'reference', label: 'Case Number', value: caseMatch[1], icon: '📋' })
-  if (/\b(?:approve|reversal|refund)\b/i.test(text)) cards.push({ id: 'card_action', type: 'action', label: 'Action', value: 'Refund Approved', icon: '✅' })
-  if (/\bGHS\b|\b(?:fifty|cedis)\b/i.test(text)) cards.push({ id: 'card_amount', type: 'amount', label: 'Amount', value: 'GHS 50.00', icon: '💳' })
-  return cards
-}
+import { Play, Pause, RotateCcw, SkipForward, X, Volume2, CheckCircle2, ArrowLeft, Smartphone, Send } from 'lucide-react'
+import { useAccessibility } from '../hooks/useAccessibility'
+import { DEMO_TREE_EN, extractCards, getTree } from '../data/conversationTree'
 
 export default function DemoPage({ onBack, onComplete }) {
+  const { currentFontSize } = useAccessibility()
   const [language, setLanguage] = useState('en')
-  const [isPlaying, setIsPlaying] = useState(false)
-  const [currentTurn, setCurrentTurn] = useState(0)
-  const [displayedText, setDisplayedText] = useState('')
-  const [liveSpeaker, setLiveSpeaker] = useState(null)
-  const [cards, setCards] = useState([])
   const [transcripts, setTranscripts] = useState([])
+  const [cards, setCards] = useState([])
   const [speed, setSpeed] = useState(1)
   const [ready, setReady] = useState(false)
   const [offlineQueue, setOfflineQueue] = useState(0)
   const [smsSent, setSmsSent] = useState(false)
   const [caseNumber, setCaseNumber] = useState('')
+  const [customerInput, setCustomerInput] = useState('')
+  const [waitingForCustomer, setWaitingForCustomer] = useState(false)
+  const [suggestions, setSuggestions] = useState([])
+  const [currentNodeId, setCurrentNodeId] = useState('root')
+  const [isPlaying, setIsPlaying] = useState(false)
+  const [tree, setTree] = useState(DEMO_TREE_EN)
   const intervalRef = useRef(null)
   const timeoutRef = useRef(null)
   const isPlayingRef = useRef(false)
-  const hasAutoStarted = useRef(false)
-  const conversation = language === 'tw' ? DEMO_CONVERSATION_TWI : DEMO_CONVERSATION
 
   const clearTimers = () => {
     clearInterval(intervalRef.current)
@@ -67,88 +31,95 @@ export default function DemoPage({ onBack, onComplete }) {
     timeoutRef.current = null
   }
 
-  const playTurn = (turnIndex) => {
-    clearTimers()
-    if (turnIndex >= conversation.length) {
+  const showAgentNode = (nodeId) => {
+    const node = tree[nodeId]
+    if (!node) {
       setIsPlaying(false)
       isPlayingRef.current = false
-      setDisplayedText('')
-      setLiveSpeaker(null)
+      setWaitingForCustomer(false)
       setSmsSent(true)
       setCaseNumber('CASE45678')
       onComplete?.()
       return
     }
 
-    setCurrentTurn(turnIndex)
-    const turn = conversation[turnIndex]
-    const words = turn.text.split(' ')
-    let wordIndex = 0
-    setLiveSpeaker(turn.speaker)
-    setDisplayedText('')
+    setTranscripts(prev => [...prev, { speaker: 'agent', text: node.agent, timestamp: Date.now() }])
+    const nextCards = extractCards(node.agent)
+    setCards(prev => {
+      const merged = [...prev]
+      nextCards.forEach(card => { if (!merged.find(c => c.value === card.value)) merged.push(card) })
+      return merged
+    })
 
-    intervalRef.current = setInterval(() => {
-      if (wordIndex < words.length) {
-        setDisplayedText(prev => (prev ? prev + ' ' : '') + words[wordIndex])
-        wordIndex++
-      } else {
-        clearInterval(intervalRef.current)
-        intervalRef.current = null
+    setCurrentNodeId(nodeId)
+    setSuggestions((node.options || []).map(option => option.label))
+    setWaitingForCustomer(true)
+    setCustomerInput('')
+  }
 
-        setTranscripts(prev => [...prev, { speaker: turn.speaker, text: turn.text, timestamp: Date.now() + turnIndex }])
-        const nextCards = extractCards(turn.text)
-        setCards(prev => {
-          const merged = [...prev]
-          nextCards.forEach(card => { if (!merged.find(c => c.value === card.value)) merged.push(card) })
-          return merged
-        })
+  const sendCustomerResponse = (text) => {
+    if (!text.trim()) return
+    setTranscripts(prev => [...prev, { speaker: 'customer', text: text.trim(), timestamp: Date.now() }])
+    setCustomerInput('')
+    setSuggestions([])
+    setWaitingForCustomer(false)
+    clearTimers()
 
-        setDisplayedText('')
-        setLiveSpeaker(null)
+    const currentNode = tree[currentNodeId]
+    const matched = currentNode?.options?.find(option => option.label.toLowerCase() === text.trim().toLowerCase())
+    const nextNodeId = matched?.next || 'end'
 
-        timeoutRef.current = setTimeout(() => {
-          if (isPlayingRef.current) playTurn(turnIndex + 1)
-        }, turn.delay / speed)
-      }
-    }, 200 / speed)
+    const t = setTimeout(() => {
+      showAgentNode(nextNodeId)
+    }, 600 / speed)
+    timeoutRef.current = t
   }
 
   const startDemo = () => {
-    setSpeed(1)
-    setIsPlaying(true)
-    isPlayingRef.current = true
-    setTranscripts([])
-    setCards([])
-    setCurrentTurn(0)
-    setDisplayedText('')
-    setLiveSpeaker(null)
-    setLanguage('en')
-    playTurn(0)
+    try {
+      setSpeed(1)
+      setIsPlaying(true)
+      isPlayingRef.current = true
+      setTranscripts([])
+      setCards([])
+      setCurrentNodeId('root')
+      setWaitingForCustomer(false)
+      setSuggestions([])
+      setCustomerInput('')
+      showAgentNode('root')
+    } catch (err) {
+      console.error('Demo start failed', err)
+      setIsPlaying(false)
+      isPlayingRef.current = false
+    }
   }
 
   const pauseDemo = () => {
     setIsPlaying(false)
     isPlayingRef.current = false
     clearTimers()
-    setDisplayedText('')
-    setLiveSpeaker(null)
   }
 
   const resetDemo = () => {
     pauseDemo()
-    setCurrentTurn(0)
+    setCurrentNodeId('root')
     setTranscripts([])
     setCards([])
     setSpeed(1)
     setSmsSent(false)
     setCaseNumber('')
     setOfflineQueue(0)
-    hasAutoStarted.current = false
+    setWaitingForCustomer(false)
+    setSuggestions([])
+    setCustomerInput('')
   }
 
-  const skipTurn = () => {
+  const skipToNext = () => {
+    if (waitingForCustomer && suggestions.length > 0) {
+      sendCustomerResponse(suggestions[0])
+      return
+    }
     pauseDemo()
-    if (currentTurn < conversation.length - 1) playTurn(currentTurn + 1)
   }
 
   useEffect(() => {
@@ -157,16 +128,35 @@ export default function DemoPage({ onBack, onComplete }) {
   }, [])
 
   useEffect(() => {
-    if (ready && !hasAutoStarted.current) {
-      hasAutoStarted.current = true
-      const t = setTimeout(() => startDemo(), 400)
-      return () => clearTimeout(t)
-    }
-  }, [ready])
-
-  useEffect(() => {
     return () => clearTimers()
   }, [])
+
+  useEffect(() => {
+    if (!ready) return
+    clearTimers()
+    setIsPlaying(false)
+    isPlayingRef.current = false
+    setTranscripts([])
+    setCards([])
+    setCurrentNodeId('root')
+    setWaitingForCustomer(false)
+    setSuggestions([])
+    setCustomerInput('')
+    setSmsSent(false)
+    setCaseNumber('')
+    setOfflineQueue(0)
+    let cancelled = false
+    getTree(language).then(loadedTree => {
+      if (!cancelled) setTree(loadedTree)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [language, ready])
+
+  const visibleSuggestions = suggestions.filter(s =>
+    s.toLowerCase().includes(customerInput.toLowerCase())
+  )
 
   if (!ready) {
     return (
@@ -176,7 +166,7 @@ export default function DemoPage({ onBack, onComplete }) {
     )
   }
 
-  const progress = Math.round((currentTurn / conversation.length) * 100)
+  const progress = Math.round((transcripts.length / 10) * 100)
 
   return (
     <div className="demo-page">
@@ -191,35 +181,12 @@ export default function DemoPage({ onBack, onComplete }) {
           </div>
         </div>
         <div className="demo-controls-top">
-          <div className="demo-metrics">
-            <div className="demo-metric">
-              <Zap size={14} />
-              <span className="demo-metric-value">&lt;1.5s</span>
-              <span>Latency</span>
-            </div>
-            <div className="demo-metric">
-              <Activity size={14} />
-              <span className="demo-metric-value">98%</span>
-              <span>Confidence</span>
-            </div>
-            <div className="demo-metric">
-              <Clock size={14} />
-              <span className="demo-metric-value">~4 min</span>
-              <span>Resolution</span>
-            </div>
-            {offlineQueue > 0 && (
-              <div className="offline-queue-badge">
-                <WifiOff size={14} />
-                <span>{offlineQueue} queued</span>
-              </div>
-            )}
-          </div>
           <div className="speed-control">
             <span className="speed-label">Speed</span>
             {[0.5, 1, 1.5].map(s => (
               <button
                 key={s}
-                onClick={() => { setSpeed(s); if (isPlayingRef.current) playTurn(currentTurn) }}
+                onClick={() => setSpeed(s)}
                 className={'speed-btn' + (speed === s ? ' active' : '')}
               >
                 {s}x
@@ -269,29 +236,12 @@ export default function DemoPage({ onBack, onComplete }) {
               >
                 <div className="demo-transcript-speaker">
                   <span className={'demo-dot ' + t.speaker} />
-                  <span>{t.speaker === 'agent' ? 'Agent' : 'Customer'}</span>
+                  <span>{t.speaker === 'agent' ? 'Agent' : 'You'}</span>
                 </div>
-                <p>{t.text}</p>
+                <p style={{ fontSize: currentFontSize, direction: 'ltr' }}>{t.text}</p>
               </motion.div>
             ))}
           </AnimatePresence>
-
-          {liveSpeaker && displayedText && (
-            <motion.div
-              className={'demo-transcript ' + liveSpeaker + ' demo-transcript-live'}
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-            >
-              <div className="demo-transcript-speaker">
-                <span className={'demo-dot ' + liveSpeaker} />
-                <span>{liveSpeaker === 'agent' ? 'Agent' : 'Customer'}</span>
-              </div>
-              <p>
-                {displayedText}
-                <span className="typing-cursor" />
-              </p>
-            </motion.div>
-          )}
         </div>
 
         <div className="demo-footer">
@@ -299,18 +249,54 @@ export default function DemoPage({ onBack, onComplete }) {
             <div className="progress-bar">
               <div className="progress-fill" style={{ width: progress + '%' }} />
             </div>
-            <span className="progress-text">{currentTurn} / {conversation.length}</span>
+            <span className="progress-text">{transcripts.length} / 10</span>
           </div>
           <div className="demo-actions">
-            {!isPlaying ? (
-              <button className="btn btn-primary btn-sm" onClick={startDemo}><Play size={16} /> Play Demo</button>
+            {!waitingForCustomer ? (
+              <button className="btn btn-primary btn-sm" onClick={startDemo} disabled={isPlaying}><Play size={16} /> Play</button>
             ) : (
               <button className="btn btn-secondary btn-sm" onClick={pauseDemo}><Pause size={16} /> Pause</button>
             )}
-            <button className="btn btn-secondary btn-sm" onClick={skipTurn} disabled={currentTurn >= DEMO_CONVERSATION.length - 1}><SkipForward size={16} /> Skip</button>
+            <button className="btn btn-secondary btn-sm" onClick={skipToNext} disabled={!waitingForCustomer}>
+              <SkipForward size={16} /> Next
+            </button>
             <button className="btn btn-secondary btn-sm" onClick={resetDemo}><RotateCcw size={16} /> Reset</button>
           </div>
         </div>
+
+        {waitingForCustomer && (
+          <div className="demo-response-area">
+            <div className="demo-suggestions" role="list" aria-label="Suggested responses">
+              {visibleSuggestions.map((suggestion, index) => (
+                <button
+                  key={index}
+                  className="demo-suggestion-chip"
+                  role="listitem"
+                  onClick={() => sendCustomerResponse(suggestion)}
+                >
+                  {suggestion}
+                </button>
+              ))}
+            </div>
+            <div className="demo-input-row">
+              <input
+                id="demo-customer-input"
+                type="text"
+                value={customerInput}
+                onChange={(e) => setCustomerInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') sendCustomerResponse(customerInput)
+                }}
+                placeholder="Type your response..."
+                aria-label="Your response"
+                style={{ fontSize: currentFontSize }}
+              />
+              <button className="btn btn-primary btn-sm" onClick={() => sendCustomerResponse(customerInput)} disabled={!customerInput.trim()} aria-label="Send response">
+                <Send size={16} />
+              </button>
+            </div>
+          </div>
+        )}
 
         {smsSent && (
           <motion.div
@@ -324,9 +310,25 @@ export default function DemoPage({ onBack, onComplete }) {
             <div className="sms-phone-body">
               <div className="sms-phone-to">To: +233 XX XXX XXXX</div>
               <div className="sms-phone-message">
-                EchoText Ghana: Your support case {caseNumber || 'CASE45678'} has been confirmed. Your refund of GHS 50.00 has been approved. Funds will arrive within 24 hours.
+                 EchoText Ghana: Your support case {caseNumber || 'CASE45678'} has been confirmed. Your refund of fifty Ghana cedis has been approved. Funds will arrive within twenty-four hours.
               </div>
               <div className="sms-phone-meta">Delivered via SMS Gateway</div>
+            </div>
+          </motion.div>
+        )}
+
+        {smsSent && (
+          <motion.div
+            className="agent-progress-tracker"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
+            <div className="agent-progress-header">
+              <span className="agent-progress-title">Resolution Progress</span>
+              <span className="agent-progress-status">In Progress</span>
+            </div>
+            <div className="agent-progress-bar">
+              <div className="agent-progress-fill" style={{ width: '65%' }} />
             </div>
           </motion.div>
         )}

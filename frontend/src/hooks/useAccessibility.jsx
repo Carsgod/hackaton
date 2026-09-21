@@ -15,6 +15,24 @@ export function AccessibilityProvider({ children }) {
     document.documentElement.setAttribute('data-high-contrast', highContrast ? 'true' : 'false')
   }, [theme, highContrast])
 
+  useEffect(() => {
+    document.documentElement.setAttribute('data-reduced-motion', reducedMotion ? 'true' : 'false')
+  }, [reducedMotion])
+
+  useEffect(() => {
+    const motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)')
+    if (motionQuery.matches && !reducedMotion) {
+      setReducedMotion(true)
+    }
+    const handler = (e) => {
+      if (e.matches && !reducedMotion) {
+        setReducedMotion(true)
+      }
+    }
+    motionQuery.addEventListener('change', handler)
+    return () => motionQuery.removeEventListener('change', handler)
+  }, [reducedMotion, setReducedMotion])
+
   const fontSizes = { small: '14px', medium: '18px', large: '24px', xlarge: '32px' }
   const currentFontSize = fontSizes[fontSize] || '18px'
 

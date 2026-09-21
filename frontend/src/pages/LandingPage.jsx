@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { Camera, Scan, Smartphone, MessageSquare, Volume2, Accessibility, Globe, Zap, Shield, Users, ArrowRight, Play, Monitor, CheckCircle2, Phone, Menu, X } from 'lucide-react'
+import { Camera, Scan, Smartphone, MessageSquare, Volume2, Accessibility, Globe, Zap, Shield, Users, ArrowRight, Play, Monitor, CheckCircle2, Phone } from 'lucide-react'
 import { useAccessibility } from '../hooks/useAccessibility'
 import AccessibilityControls from '../components/AccessibilityControls'
 
@@ -12,14 +12,39 @@ export default function LandingPage({ onJoinSession, onStartDemo, onOpenAgent })
   const [mobileOpen, setMobileOpen] = useState(false)
   const [showIntro, setShowIntro] = useState(true)
   const [showAccessibility, setShowAccessibility] = useState(false)
+  const [scrolled, setScrolled] = useState(false)
   const videoRef = useRef(null)
   const canvasRef = useRef(null)
+  const navRef = useRef(null)
 
   useEffect(() => {
     if (!showIntro) return
     const t = setTimeout(() => setShowIntro(false), 6000)
     return () => clearTimeout(t)
   }, [showIntro])
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 20)
+    }
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
+
+  useEffect(() => {
+    if (!mobileOpen) return
+    const handleClick = (e) => {
+      if (navRef.current && !navRef.current.contains(e.target)) {
+        setMobileOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClick)
+    document.addEventListener('touchstart', handleClick)
+    return () => {
+      document.removeEventListener('mousedown', handleClick)
+      document.removeEventListener('touchstart', handleClick)
+    }
+  }, [mobileOpen])
 
   const features = [
     { icon: Volume2, title: 'Live Transcription', desc: 'Agent speech converted to clear text in under 1.5 seconds', color: 'var(--accent)' },
@@ -69,19 +94,21 @@ export default function LandingPage({ onJoinSession, onStartDemo, onOpenAgent })
 
   return (
     <div className="landing-page">
-      <nav className="navbar" role="navigation" aria-label="Main">
+      <a href="#main-content" className="skip-link">Skip to main content</a>
+      <nav className={'navbar' + (scrolled ? ' navbar-scrolled' : '')} role="navigation" aria-label="Main">
         <div className="nav-content">
           <a className="nav-brand" href="#" onClick={(e) => { e.preventDefault(); onStartDemo?.() }}>
-            <Volume2 size={26} color="var(--accent)" />
-            <span className="nav-logo">
-              Echo<span className="nav-logo-accent">Text</span>
-            </span>
-            <span className="nav-badge">GH</span>
+            <img src={`/logo1.jpg?t=${Date.now()}`} alt="EchoText" className="nav-logo-img" />
+            
           </a>
           <button className="nav-hamburger" onClick={() => setMobileOpen(prev => !prev)} aria-label="Toggle menu">
-            {mobileOpen ? <X size={22} /> : <Menu size={22} />}
+            <span className={'nav-hamburger-icon' + (mobileOpen ? ' open' : '')}>
+              <span></span>
+              <span></span>
+              <span></span>
+            </span>
           </button>
-          <div className={'nav-links' + (mobileOpen ? ' nav-links-open' : '')}>
+          <div ref={navRef} className={'nav-links' + (mobileOpen ? ' nav-links-open' : '')}>
             <a className="nav-link" href="#features" onClick={() => setMobileOpen(false)}>Features</a>
             <a className="nav-link" href="#how-it-works" onClick={() => setMobileOpen(false)}>How It Works</a>
             <button className="btn btn-primary nav-cta" onClick={() => { onStartDemo?.(); setMobileOpen(false) }}>
@@ -94,6 +121,7 @@ export default function LandingPage({ onJoinSession, onStartDemo, onOpenAgent })
               <Accessibility size={20} />
             </button>
           </div>
+          <div className={'nav-overlay' + (mobileOpen ? ' nav-overlay-open' : '')} onClick={() => setMobileOpen(false)} />
         </div>
       </nav>
 
@@ -133,11 +161,7 @@ export default function LandingPage({ onJoinSession, onStartDemo, onOpenAgent })
         </motion.div>
       )}
 
-      <section className="hero">
-        <div className="hero-bg">
-          <div className="hero-orb hero-orb-1" />
-          <div className="hero-orb hero-orb-2" />
-        </div>
+      <section id="main-content" className="hero">
         <motion.div
           className="hero-content"
           initial={{ opacity: 0, y: 24 }}
@@ -146,7 +170,7 @@ export default function LandingPage({ onJoinSession, onStartDemo, onOpenAgent })
         >
           <div className="hero-badge">
             <Zap size={14} />
-            <span>Live Accessibility Demo</span>
+            <span>Live Accessibility </span>
           </div>
           <h1 className="hero-title">
             <span className="hero-title-accent">EchoText Ghana</span>
@@ -155,7 +179,7 @@ export default function LandingPage({ onJoinSession, onStartDemo, onOpenAgent })
           </h1>
           <p className="hero-description">
             Empowering Deaf telecommunications customers with real-time speech-to-text.
-            No app download. No interpreter needed. Scan, read, and resolve your issue independently.
+            No app download. Scan, read, and resolve your issue independently.
           </p>
           <div className="hero-actions">
             <button className="btn btn-primary btn-lg" onClick={handleScanQR}>
@@ -294,6 +318,7 @@ export default function LandingPage({ onJoinSession, onStartDemo, onOpenAgent })
             <p>Enter a session ID or scan the QR code at the counter</p>
             <div className="join-form">
               <input
+                id="session-id-input"
                 type="text"
                 placeholder="Enter Session ID (e.g., MTN_ABC123)"
                 value={sessionId}

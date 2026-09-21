@@ -1,12 +1,18 @@
 import { motion } from 'framer-motion'
 
-export default function QuickResponses({ prompts, onSelect, disabled }) {
+export default function QuickResponses({ prompts, onSelect, disabled, filterText }) {
+  const visible = filterText
+    ? prompts.filter(prompt => prompt.toLowerCase().includes(filterText.toLowerCase()))
+    : prompts
+
+  if (!visible.length) return null
+
   return (
     <div className="quick-responses" role="region" aria-label="Quick response prompts">
       <div className="quick-responses-scroll">
-        {prompts.map((prompt, index) => (
+        {visible.map((prompt, index) => (
           <motion.button
-            key={index}
+            key={prompt + index}
             className="quick-prompt"
             onClick={() => onSelect(prompt)}
             disabled={disabled}

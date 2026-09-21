@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  Volume2, Send, RotateCcw, Accessibility,
+  Send, RotateCcw, Accessibility,
   X, AlertTriangle, Smartphone, CheckCircle2, Globe,
 } from 'lucide-react'
 import { useWebSocket } from '../hooks/useWebSocket'
@@ -9,32 +9,170 @@ import { useAccessibility } from '../hooks/useAccessibility'
 import PinnedCards from '../components/PinnedCards'
 import QuickResponses from '../components/QuickResponses'
 import AccessibilityControls from '../components/AccessibilityControls'
-
-const QUICK_PROMPTS = [
-  'Yes, I approve',
-  'No, please explain again',
-  'Can you repeat that?',
-  'I need a refund',
-  'Thank you',
-  'Hold on, please',
-]
+import { DEMO_TREE_EN, DEMO_TREE_TWI, extractCards, getTree } from '../data/conversationTree'
 
 export default function TranscriptionPage({ sessionId, onBack, demoMode, onComplete }) {
+  const { currentFontSize } = useAccessibility()
   const [language, setLanguage] = useState('en')
   const [transcripts, setTranscripts] = useState([])
   const [cards, setCards] = useState([])
-  const [displayedText, setDisplayedText] = useState('')
-  const [liveSpeaker, setLiveSpeaker] = useState(null)
-  const [showControls, setShowControls] = useState(false)
   const [connectionStatus, setConnectionStatus] = useState('connecting')
   const [smsSent, setSmsSent] = useState(false)
   const [caseNumber, setCaseNumber] = useState('')
   const [customerResponse, setCustomerResponse] = useState('')
   const [networkStatus, setNetworkStatus] = useState('online')
   const [offlineQueue, setOfflineQueue] = useState([])
+  const [showControls, setShowControls] = useState(false)
+  const [currentNodeId, setCurrentNodeId] = useState('root')
+  const [waitingForCustomer, setWaitingForCustomer] = useState(false)
+  const [suggestions, setSuggestions] = useState([])
+  const [isPlaying, setIsPlaying] = useState(false)
+  const [tree, setTree] = useState(DEMO_TREE_EN)
+  const [dualLanguage, setDualLanguage] = useState(false)
+  const [speakingId, setSpeakingId] = useState(null)
+  const [retrying, setRetrying] = useState(false)
+  const [lastError, setLastError] = useState(null)
+  const [connectionRestored, setConnectionRestored] = useState(false)
+  const [showOnboarding, setShowOnboarding] = useState(false)
   const messagesEndRef = useRef(null)
-  const { currentFontSize } = useAccessibility()
-  const wsUrl = `ws://localhost:8000/ws/${sessionId}?language=${language}`
+  const responseInputRef = useRef(null)
+  const intervalRef = useRef(null)
+  const timeoutRef = useRef(null)
+  const isPlayingRef = useRef(false)
+  const safeSessionId = encodeURIComponent(sessionId || '')
+  const wsUrl = `${import.meta.env.VITE_BACKEND_URL || 'ws://localhost:8000'}/ws/${safeSessionId}?language=${language}`
+
+  useEffect(() => {
+    const visited = localStorage.getItem('echotext-visited')
+    if (!visited) {
+      setShowOnboarding(true)
+      localStorage.setItem('echotext-visited', 'true')
+    }
+  }, [])
+
+  const connectionState = connectionStatus === 'connected' ? 'live' : connectionStatus === 'connecting' ? 'connecting' : connectionStatus === 'ended' ? 'ended' : 'offline'
+  const isOnline = networkStatus === 'online'
+  const showOfflineBanner = !isOnline || connectionState !== 'live'
+
+  useEffect(() => {
+    if (waitingForCustomer && responseInputRef.current && isOnline) {
+      responseInputRef.current.focus()
+    }
+  }, [waitingForCustomer, isOnline])
+
+  const clearTimers = () => {
+    clearInterval(intervalRef.current)
+    clearTimeout(timeoutRef.current)
+    intervalRef.current = null
+    timeoutRef.current = null
+  }
+
+  const getTranslation = (nodeId, speaker) => {
+    if (!dualLanguage) return null
+    const otherLang = language === 'en' ? DEMO_TREE_TWI : DEMO_TREE_EN
+    const otherNode = otherLang[nodeId]
+    if (!otherNode) return null
+    return speaker === 'agent' ? otherNode?.agent : null
+  }
+
+  const speakText = (text, id) => {
+    if (!window.speechSynthesis) return
+    window.speechSynthesis.cancel()
+    const utterance = new SpeechSynthesisUtterance(text)
+    utterance.lang = language === 'tw' ? 'tw-GH' : 'en-GH'
+    utterance.rate = 1
+    utterance.pitch = 1
+    utterance.volume = 1
+    utterance.onstart = () => setSpeakingId(id)
+    utterance.onend = () => setSpeakingId(null)
+    utterance.onerror = () => setSpeakingId(null)
+    window.speechSynthesis.speak(utterance)
+  }
+
+  const showAgentNode = (nodeId) => {
+    const node = tree[nodeId]
+    if (!node) {
+      setIsPlaying(false)
+      isPlayingRef.current = false
+      setWaitingForCustomer(false)
+      setSmsSent(true)
+      setCaseNumber('CASE45678')
+      onComplete?.()
+      return
+    }
+
+    setTranscripts(prev => [...prev, { speaker: 'agent', text: node.agent, timestamp: Date.now(), nodeId, translation: getTranslation(nodeId, 'agent') }])
+    const nextCards = extractCards(node.agent)
+    setCards(prev => {
+      const merged = [...prev]
+      nextCards.forEach(card => { if (!merged.find(c => c.value === card.value)) merged.push(card) })
+      return merged
+    })
+
+    setCurrentNodeId(nodeId)
+    setSuggestions((node.options || []).map(option => option.label))
+    setWaitingForCustomer(true)
+    setCustomerResponse('')
+  }
+
+  const sendCustomerResponse = (text) => {
+    if (!text.trim()) return
+    setTranscripts(prev => [...prev, { speaker: 'customer', text: text.trim(), timestamp: Date.now(), translation: null }])
+    setCustomerResponse('')
+    setSuggestions([])
+    setWaitingForCustomer(false)
+    clearTimers()
+
+    const currentNode = tree[currentNodeId]
+    const matched = currentNode?.options?.find(option => option.label.toLowerCase() === text.trim().toLowerCase())
+    const nextNodeId = matched?.next || 'end'
+
+    const t = setTimeout(() => {
+      showAgentNode(nextNodeId)
+    }, 600)
+    timeoutRef.current = t
+  }
+
+  const startSession = () => {
+    setIsPlaying(true)
+    isPlayingRef.current = true
+    setTranscripts([])
+    setCards([])
+    setCurrentNodeId('root')
+    setWaitingForCustomer(false)
+    setSuggestions([])
+    setCustomerResponse('')
+    showAgentNode('root')
+  }
+
+  const pauseSession = () => {
+    setIsPlaying(false)
+    isPlayingRef.current = false
+    clearTimers()
+  }
+
+  const resetSession = () => {
+    pauseSession()
+    setCurrentNodeId('root')
+    setTranscripts([])
+    setCards([])
+    setWaitingForCustomer(false)
+    setSuggestions([])
+    setCustomerResponse('')
+  }
+
+  const onConnect = useCallback(() => setConnectionStatus('connected'), [])
+  const onDisconnect = useCallback(() => setConnectionStatus('disconnected'), [])
+
+  const retryConnection = () => {
+    setRetrying(true)
+    setLastError(null)
+    disconnect()
+    setTimeout(() => {
+      connect()
+      setRetrying(false)
+    }, 800)
+  }
 
   const handleMessage = useCallback((data) => {
     switch (data.type) {
@@ -45,11 +183,6 @@ export default function TranscriptionPage({ sessionId, onBack, demoMode, onCompl
             if (exists) return prev.map(t => t.timestamp === data.timestamp ? { ...t, ...data } : t)
             return [...prev, data]
           })
-          setDisplayedText('')
-          setLiveSpeaker(null)
-        } else {
-          setDisplayedText(data.text)
-          setLiveSpeaker(data.speaker)
         }
         if (data.cards) {
           setCards(prev => {
@@ -63,6 +196,9 @@ export default function TranscriptionPage({ sessionId, onBack, demoMode, onCompl
         break
       case 'connected':
         setConnectionStatus('connected')
+        setConnectionRestored(true)
+        setLastError(null)
+        setTimeout(() => setConnectionRestored(false), 3000)
         break
       case 'status':
         setConnectionStatus(data.status === 'ended' ? 'ended' : data.status)
@@ -74,13 +210,13 @@ export default function TranscriptionPage({ sessionId, onBack, demoMode, onCompl
       case 'ack':
         setCustomerResponse('')
         break
+      case 'error':
+        setLastError(data.message || 'Connection error')
+        break
       default:
         break
     }
   }, [])
-
-  const onConnect = useCallback(() => setConnectionStatus('connected'), [])
-  const onDisconnect = useCallback(() => setConnectionStatus('disconnected'), [])
 
   const { isConnected, error, connect, disconnect, send } = useWebSocket(
     wsUrl,
@@ -92,11 +228,11 @@ export default function TranscriptionPage({ sessionId, onBack, demoMode, onCompl
   useEffect(() => {
     connect()
     return () => disconnect()
-  }, [sessionId, connect, disconnect])
+  }, [sessionId, wsUrl, connect, disconnect])
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [transcripts, displayedText])
+  }, [transcripts])
 
   useEffect(() => {
     const onOnline = () => setNetworkStatus('online')
@@ -108,6 +244,32 @@ export default function TranscriptionPage({ sessionId, onBack, demoMode, onCompl
       window.removeEventListener('offline', onOffline)
     }
   }, [])
+
+  useEffect(() => {
+    return () => clearTimers()
+  }, [])
+
+  useEffect(() => {
+    clearTimers()
+    setTranscripts([])
+    setCards([])
+    setCurrentNodeId('root')
+    setWaitingForCustomer(false)
+    setSuggestions([])
+    setCustomerResponse('')
+    setSmsSent(false)
+    setCaseNumber('')
+    setOfflineQueue([])
+    setIsPlaying(false)
+    isPlayingRef.current = false
+    let cancelled = false
+    getTree(language).then(loadedTree => {
+      if (!cancelled) setTree(loadedTree)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [language])
 
   const sendResponse = (text) => {
     if (!text.trim()) return
@@ -137,12 +299,11 @@ export default function TranscriptionPage({ sessionId, onBack, demoMode, onCompl
     setCaseNumber('')
   }
 
-  const statusColor = connectionStatus === 'connected' ? 'var(--accent)' : connectionStatus === 'connecting' ? '#b45309' : '#dc2626'
-  const statusLabel = connectionStatus === 'connected' ? 'LIVE' : connectionStatus === 'connecting' ? 'CONNECTING' : connectionStatus === 'ended' ? 'ENDED' : 'OFFLINE'
-  const hasContent = transcripts.length > 0 || cards.length > 0 || connectionStatus === 'connected' || connectionStatus === 'connecting'
+  const hasContent = transcripts.length > 0 || cards.length > 0
 
   return (
     <div className="transcription-page">
+      <a href="#transcript-main" className="skip-link">Skip to transcript</a>
       <header className="transcription-header">
         <div className="header-left">
           <button className="btn-icon" onClick={onBack} aria-label="Go back">
@@ -156,39 +317,106 @@ export default function TranscriptionPage({ sessionId, onBack, demoMode, onCompl
                 <button className={'lang-btn' + (language === 'en' ? ' active' : '')} onClick={() => setLanguage('en')}>EN</button>
                 <button className={'lang-btn' + (language === 'tw' ? ' active' : '')} onClick={() => setLanguage('tw')}>TW</button>
               </div>
+              <button className={'lang-btn' + (dualLanguage ? ' active' : '')} onClick={() => setDualLanguage(prev => !prev)}>EN+TW</button>
             </div>
           </div>
         </div>
         <div className="header-right">
-          <div className="connection-indicator" style={{ background: statusColor }}>
-            <span className="pulse-dot" />
-            <span className="status-text">{statusLabel}</span>
-          </div>
-          <div className="network-indicator">
-            <span className={`network-dot ${networkStatus}`} />
-            <span className="network-text">{networkStatus === 'online' ? 'Online' : 'Offline'}</span>
-          </div>
-          {offlineQueue.length > 0 && (
-            <div className="offline-badge" title={`${offlineQueue.length} messages pending`}>
-              <AlertTriangle size={13} />
-              {offlineQueue.length}
-            </div>
-          )}
           <button className="btn-icon" onClick={() => setShowControls(!showControls)} aria-label="Accessibility settings">
             <Accessibility size={20} />
           </button>
         </div>
       </header>
 
+      {showOnboarding && (
+        <div className="transcription-onboarding" role="alert">
+          <div className="transcription-onboarding-content">
+            <strong>Welcome to EchoText</strong>
+            <p>This demo shows live captions, quick responses, and dual-language subtitles. Use the accessibility button to adjust text size and contrast.</p>
+            <button className="btn btn-primary" onClick={() => setShowOnboarding(false)}>Got it</button>
+          </div>
+        </div>
+      )}
+
+      {showOfflineBanner && (
+        <div className={`transcription-status-banner transcription-status-banner-${connectionState}`} role="status" aria-live="polite">
+          {!isOnline ? (
+            <>
+              <AlertTriangle size={16} />
+              <span>Device offline</span>
+            </>
+          ) : connectionState === 'live' ? (
+            <>
+              <span className="pulse-dot" />
+              <span>Live session active</span>
+            </>
+          ) : connectionState === 'connecting' ? (
+            <>
+              <span className="transcription-status-spinner" />
+              <span>Connecting{retrying ? '...' : ''}</span>
+              <button className="transcription-status-retry" onClick={retryConnection} disabled={retrying}>
+                {retrying ? 'Retrying...' : 'Retry'}
+              </button>
+            </>
+          ) : connectionState === 'offline' ? (
+            <>
+              <AlertTriangle size={16} />
+              <span>You are offline</span>
+              <button className="transcription-status-retry" onClick={retryConnection} disabled={retrying}>
+                {retrying ? 'Retrying...' : 'Retry'}
+              </button>
+            </>
+          ) : connectionState === 'ended' ? (
+            <>
+              <AlertTriangle size={16} />
+              <span>Session ended</span>
+            </>
+          ) : null}
+        </div>
+      )}
+
+      {connectionRestored && (
+        <div className="transcription-success-banner" role="status" aria-live="polite">
+          <CheckCircle2 size={16} />
+          <span>Connection restored</span>
+        </div>
+      )}
+
+      {lastError && !showOfflineBanner && (
+        <div className="transcription-error-banner" role="alert">
+          <AlertTriangle size={16} />
+          <span>{lastError}</span>
+          <button className="transcription-status-retry" onClick={retryConnection} disabled={retrying}>
+            {retrying ? 'Retrying...' : 'Retry'}
+          </button>
+        </div>
+      )}
+
+      {offlineQueue.length > 0 && (
+        <div className="transcription-offline-queue" role="status" aria-live="polite">
+          <AlertTriangle size={16} />
+          <span>{offlineQueue.length} message{offlineQueue.length === 1 ? '' : 's'} pending sync</span>
+        </div>
+      )}
+
       <PinnedCards cards={cards} />
 
-      <main className="transcription-main">
+      <main id="transcript-main" className="transcription-main">
         <div className="transcripts-container">
           {!hasContent && (
-            <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--text-muted)' }}>
-              <Volume2 size={48} color="var(--border-color)" style={{ marginBottom: 16 }} />
-              <p style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: 8 }}>Waiting for transcription...</p>
-              <p style={{ fontSize: '0.9rem' }}>The agent's speech will appear here in real time.</p>
+            <div className="transcription-waiting">
+              <div className="transcription-waiting-wave">
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+              </div>
+              <p className="transcription-waiting-title">Waiting for transcription...</p>
+              <p className="transcription-waiting-subtitle">The agent's speech will appear here in real time.</p>
+              <button className="btn btn-primary" style={{ marginTop: 16 }} onClick={startSession}>
+                Start Demo Session
+              </button>
             </div>
           )}
           <AnimatePresence>
@@ -207,73 +435,72 @@ export default function TranscriptionPage({ sessionId, onBack, demoMode, onCompl
                     <span className="confidence">{Math.round(transcript.confidence * 100)}%</span>
                   )}
                 </div>
-                <p className="transcript-text" style={{ fontSize: currentFontSize }}>
-                  {transcript.text}
-                </p>
+                <div className="transcript-text-wrap">
+                  <p className="transcript-text" style={{ fontSize: currentFontSize, direction: 'ltr' }}>
+                    {transcript.text}
+                  </p>
+                  {dualLanguage && transcript.translation && (
+                    <p className="transcript-text transcript-text-secondary" style={{ fontSize: currentFontSize, direction: 'ltr' }}>
+                      {transcript.translation}
+                    </p>
+                  )}
+                </div>
+                <div className="transcript-actions">
+                  <button className="transcript-action-btn" onClick={() => speakText(transcript.text, transcript.timestamp)} aria-label="Read aloud">
+                    {speakingId === transcript.timestamp ? '🔊' : '🔈'}
+                  </button>
+                </div>
                 {transcript.is_local && <span className="local-badge">You</span>}
                 {transcript.pending && <span className="pending-badge">Pending</span>}
               </motion.div>
             ))}
           </AnimatePresence>
-          {liveSpeaker && displayedText && (
-            <motion.div
-              className={`transcript-bubble ${liveSpeaker} transcript-live`}
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-            >
-              <div className="transcript-speaker">
-                <span className={`speaker-dot ${liveSpeaker}`} />
-                <span className="speaker-label">{liveSpeaker === 'agent' ? 'Agent' : 'You'}</span>
-              </div>
-              <p className="transcript-text" style={{ fontSize: currentFontSize }}>
-                {displayedText}
-                <span className="typing-cursor" />
-              </p>
-            </motion.div>
-          )}
           <div ref={messagesEndRef} />
         </div>
       </main>
 
-      <QuickResponses
-        prompts={QUICK_PROMPTS}
-        onSelect={sendResponse}
-        disabled={networkStatus === 'offline'}
-      />
-
-      <div className="response-bar">
-        <div className="response-input-wrapper">
-          <input
-            type="text"
-            placeholder="Type your response..."
-            value={customerResponse}
-            onChange={(e) => setCustomerResponse(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && sendResponse(customerResponse)}
-            className="response-input"
-            aria-label="Type your response"
-            style={{ fontSize: currentFontSize }}
-            disabled={networkStatus === 'offline'}
-          />
-          <button className="btn-send" onClick={() => sendResponse(customerResponse)} disabled={!customerResponse.trim() || networkStatus === 'offline'} aria-label="Send response">
-            <Send size={20} />
-          </button>
-        </div>
-        <div className="response-actions">
-          {!smsSent ? (
-            <button className="btn-sms" onClick={sendSMS} disabled={networkStatus === 'offline'}>
-              <Smartphone size={15} /> Get SMS Confirmation
+      {waitingForCustomer && (
+        <div className="response-bar">
+          <div className="response-input-wrapper">
+            <input
+              id="transcription-customer-input"
+              ref={responseInputRef}
+              type="text"
+              placeholder={isOnline ? 'Type your response...' : 'You are offline...'}
+              value={customerResponse}
+              onChange={(e) => setCustomerResponse(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && sendCustomerResponse(customerResponse)}
+              className="response-input"
+              aria-label="Type your response"
+              aria-describedby="connection-status-description"
+              style={{ fontSize: currentFontSize }}
+              disabled={!isOnline}
+            />
+            <button className="btn-send" onClick={() => sendCustomerResponse(customerResponse)} disabled={!customerResponse.trim() || !isOnline} aria-label="Send response">
+              <Send size={20} />
             </button>
-          ) : (
-            <div className="sms-confirmation">
-              <CheckCircle2 size={15} color="var(--accent)" />
-              <span>SMS sent{caseNumber ? ` — ${caseNumber}` : ''}</span>
+          </div>
+          <div id="connection-status-description" className="sr-only">
+            {isOnline ? 'Connected and ready to send' : 'You are currently offline. Responses will be queued and sent when connection resumes.'}
+          </div>
+          <div className="response-actions">
+            <div className="quick-responses" role="region" aria-label="Quick response prompts">
+              <div className="quick-responses-scroll">
+                {suggestions.filter(s => s.toLowerCase().includes(customerResponse.toLowerCase())).map((prompt, index) => (
+                  <button
+                    key={prompt + index}
+                    className="quick-prompt"
+                    onClick={() => sendCustomerResponse(prompt)}
+                    disabled={!isOnline}
+                  >
+                    <span className="prompt-text">{prompt}</span>
+                  </button>
+                ))}
+              </div>
             </div>
-          )}
-          <button className="btn-icon" onClick={clearTranscript} aria-label="Clear transcript">
-            <RotateCcw size={18} />
-          </button>
+          </div>
         </div>
-      </div>
+      )}
 
       <AnimatePresence>
         {showControls && (
@@ -288,20 +515,6 @@ export default function TranscriptionPage({ sessionId, onBack, demoMode, onCompl
           </motion.div>
         )}
       </AnimatePresence>
-
-      {networkStatus === 'offline' && (
-        <div className="offline-toast" role="status" aria-live="polite">
-          <AlertTriangle size={18} />
-          <span>You're offline. Responses will sync when connection resumes.</span>
-        </div>
-      )}
-
-      {error && (
-        <div className="offline-toast" role="alert" style={{ background: 'rgba(220,38,38,0.12)', borderColor: 'rgba(220,38,38,0.4)', color: '#dc2626' }}>
-          <AlertTriangle size={18} />
-          <span>Connection issue. Showing cached session. Retrying...</span>
-        </div>
-      )}
     </div>
   )
 }

@@ -14,6 +14,7 @@ class Entity:
 
 class NLPProcessor:
     CURRENCY_PATTERNS = [
+        (r"(?:GHS\s+)?(fifty|twenty|fifteen|one hundred|five hundred)\s+Ghana\s+cedis", "currency"),
         (r"(?:GHS|Ghana\s+cedis?|cedis?)\s*(\d+(?:\.\d{1,2})?)", "currency"),
         (r"(\d+(?:\.\d{1,2})?)\s*(?:GHS|Ghana\s+cedis?|cedis?)", "currency"),
         (r"(\d+(?:\.\d{1,2})?)\s*(?:cedis?|ghana\s+cedi)", "currency"),
@@ -63,7 +64,14 @@ class NLPProcessor:
         for pattern, etype in all_patterns:
             for m in re.finditer(pattern, text, re.IGNORECASE):
                 val = m.group(1) if m.lastindex else m.group(0)
-                display = f"GHS {val}" if etype == "currency" else val
+                if etype == "currency":
+                    raw = m.group(0)
+                    if re.search(r'ghana\s+cedis', raw, re.IGNORECASE):
+                        display = raw.replace('GHS', '').replace('ghs', '').strip()
+                    else:
+                        display = f"GHS {val}"
+                else:
+                    display = val
                 key = (etype, display)
                 if key not in seen:
                     seen.add(key)
@@ -79,15 +87,15 @@ class NLPProcessor:
 
     def _build_cards(self, entities: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         cards = []
-        for e in entities:
+        for idx, e in enumerate(entities):
             if e["type"] == "currency":
-                cards.append({"id": f"card_{len(cards)}", "type": "amount", "label": "Amount", "value": e["value"], "icon": "💰", "priority": 1})
+                cards.append({"id": f"card_amount_{idx}", "type": "amount", "label": "Amount", "value": e["value"], "icon": "💳", "priority": 1})
             elif e["type"] == "reference":
-                cards.append({"id": f"card_{len(cards)}", "type": "reference", "label": "Reference", "value": e["value"], "icon": "🔢", "priority": 2})
+                cards.append({"id": f"card_ref_{idx}", "type": "reference", "label": "Reference", "value": e["value"], "icon": "🔢", "priority": 2})
             elif e["type"] == "phone":
-                cards.append({"id": f"card_{len(cards)}", "type": "phone", "label": "Phone", "value": e["value"], "icon": "📱", "priority": 3})
+                cards.append({"id": f"card_phone_{idx}", "type": "phone", "label": "Phone", "value": e["value"], "icon": "📱", "priority": 3})
             elif e["type"] == "action":
-                cards.append({"id": f"card_{len(cards)}", "type": "action", "label": "Action", "value": e["value"].title(), "icon": "✅", "priority": 4})
+                cards.append({"id": f"card_action_{idx}", "type": "action", "label": "Action", "value": e["value"].title(), "icon": "✅", "priority": 4})
         cards.sort(key=lambda c: c["priority"])
         return cards
 

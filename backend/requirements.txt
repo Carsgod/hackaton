@@ -9,3 +9,4 @@ passlib[bcrypt]==1.7.4
 python-dotenv==1.0.1
 qrcode==7.4.2
 pillow==10.2.0
+deep-translator==1.11.4
