@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  X,
   User, Users, CheckCircle2, AlertTriangle,
   ArrowLeft, Search, Settings, HelpCircle, MessageSquare, Smartphone, Send, RotateCcw, Mic,
 } from 'lucide-react'
@@ -41,17 +40,17 @@ export default function AgentDashboard({ sessionId, onBack }) {
   const [offlineQueue, setOfflineQueue] = useState(0)
   const [ready, setReady] = useState(false)
   const [isRecording, setIsRecording] = useState(false)
-  const [showSidePanel, setShowSidePanel] = useState(false)
   const [activeTab, setActiveTab] = useState('transcript')
   const [dualLanguage, setDualLanguage] = useState(false)
   const [speakingId, setSpeakingId] = useState(null)
   const [showSignIn, setShowSignIn] = useState(false)
   const [agentName, setAgentName] = useState('')
   const [agentId, setAgentId] = useState('')
-  const [agentRole, setAgentRole] = useState('Counter Support')
+  const [agentRole] = useState('Counter Support')
   const [signInName, setSignInName] = useState('')
   const [signInId, setSignInId] = useState('')
   const [showHelp, setShowHelp] = useState(false)
+  const [showSearch, setShowSearch] = useState(false)
   const transcriptsContainerRef = useRef(null)
   const isNearBottomRef = useRef(true)
   const recognitionRef = useRef(null)
@@ -298,14 +297,14 @@ export default function AgentDashboard({ sessionId, onBack }) {
   return (
     <div className="agent-dashboard">
       <a href="#agent-main" className="skip-link">Skip to main content</a>
+
       <aside className="agent-sidebar">
         <div className="agent-sidebar-header">
           <div className="agent-logo">
             <img src={`/logo1.jpg?t=${Date.now()}`} alt="EchoText" className="agent-logo-img" />
-            
           </div>
           {agentName ? (
-            <span className="agent-badge agent-badge-signed-in">Signed in</span>
+            <span className="agent-badge-signed-in">Signed in</span>
           ) : (
             <button className="agent-sign-in-btn" onClick={() => setShowSignIn(true)}>
               Sign In
@@ -343,84 +342,20 @@ export default function AgentDashboard({ sessionId, onBack }) {
         </div>
       </aside>
 
-      {showSignIn && (
-        <div className="agent-modal-overlay" onClick={() => setShowSignIn(false)}>
-          <div className="agent-modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-label="Agent sign in">
-            <h2 className="agent-modal-title">Agent Sign In</h2>
-            <p className="agent-modal-subtitle">Enter your details to access the dashboard</p>
-            <div className="agent-form-group">
-              <label className="agent-label" htmlFor="agent-signin-name">Agent Name</label>
-              <input
-                id="agent-signin-name"
-                className="agent-input"
-                type="text"
-                placeholder="e.g. Augustine Nana"
-                value={signInName}
-                onChange={(e) => setSignInName(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleSignIn()}
-              />
-            </div>
-            <div className="agent-form-group">
-              <label className="agent-label" htmlFor="agent-signin-id">Agent ID</label>
-              <input
-                id="agent-signin-id"
-                className="agent-input"
-                type="text"
-                placeholder="e.g. AGT-1042"
-                value={signInId}
-                onChange={(e) => setSignInId(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleSignIn()}
-              />
-            </div>
-            <div className="agent-modal-actions">
-              <button className="btn btn-secondary" onClick={() => setShowSignIn(false)}>Cancel</button>
-              <button className="btn btn-primary" onClick={handleSignIn}>Sign In</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {showHelp && (
-        <div className="agent-modal-overlay" onClick={() => setShowHelp(false)}>
-          <div className="agent-modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-label="Help">
-            <h2 className="agent-modal-title">Help & Support</h2>
-            <p className="agent-modal-subtitle">Quick guide for using the agent dashboard</p>
-            <div className="agent-help-list">
-              <div className="agent-help-item">
-                <strong>Transcript</strong>
-                <p>View live captions, toggle languages, and read aloud messages.</p>
-              </div>
-              <div className="agent-help-item">
-                <strong>Customer</strong>
-                <p>See customer details, phone number, and session history.</p>
-              </div>
-              <div className="agent-help-item">
-                <strong>Case</strong>
-                <p>Manage cases, send SMS confirmations, and escalate issues.</p>
-              </div>
-              <div className="agent-help-item">
-                <strong>Settings</strong>
-                <p>Switch language, enable dual subtitles, and view session info.</p>
-              </div>
-            </div>
-            <div className="agent-modal-actions">
-              <button className="btn btn-primary" onClick={() => setShowHelp(false)}>Got it</button>
-            </div>
-          </div>
-        </div>
-      )}
-
       <div className="agent-body">
         <header className="agent-topbar">
           <div className="agent-topbar-left">
             <button className="btn-icon" onClick={onBack} aria-label="Back">
               <ArrowLeft size={20} />
             </button>
-            <div>
-              <h1 className="agent-topbar-title">Session {sessionId}</h1>
-              <div className="agent-topbar-meta">
-                <span className="agent-status-dot" style={{ background: statusColor }} />
-                {statusLabel} • MTN Service Center
+            <div className="agent-topbar-brand">
+              <img src={`/logo1.jpg?t=${Date.now()}`} alt="EchoText" className="agent-logo-img" />
+              <div>
+                <h1 className="agent-topbar-title">Session {sessionId}</h1>
+                <div className="agent-topbar-meta">
+                  <span className="agent-status-dot" style={{ background: statusColor }} />
+                  {statusLabel} • MTN Service Center
+                </div>
               </div>
             </div>
           </div>
@@ -429,18 +364,61 @@ export default function AgentDashboard({ sessionId, onBack }) {
               <button className={'lang-btn' + (language === 'en' ? ' active' : '')} onClick={() => setLanguage('en')}>EN</button>
               <button className={'lang-btn' + (language === 'tw' ? ' active' : '')} onClick={() => setLanguage('tw')}>TW</button>
             </div>
-            <button className={'lang-btn' + (dualLanguage ? ' active' : '')} onClick={() => setDualLanguage(prev => !prev)}>EN+TW</button>
-            <div className="agent-search">
-              <Search size={16} />
-              <input id="agent-search-input" type="text" placeholder="Search session..." />
+            <div className="agent-search-icon" onClick={() => setShowSearch(prev => !prev)}>
+              <Search size={18} />
             </div>
-            <button className="btn-icon" onClick={() => setShowHelp(true)} aria-label="Help"><HelpCircle size={20} /></button>
-            <button className="btn-icon" onClick={() => setActiveTab('settings')} aria-label="Settings"><Settings size={20} /></button>
-            <button className="btn-icon agent-mobile-sidebar-toggle" onClick={() => setShowSidePanel(false)} aria-label="Close panel">
-              <X size={20} />
+            <input
+              id="agent-search-input"
+              className={'agent-search-input' + (showSearch ? ' open' : '')}
+              type="text"
+              placeholder="Search session..."
+            />
+            <button className="btn-icon" onClick={() => setShowHelp(true)} aria-label="Help">
+              <HelpCircle size={20} />
+            </button>
+            <button className="btn-icon" onClick={() => setActiveTab('settings')} aria-label="Settings">
+              <Settings size={20} />
             </button>
           </div>
         </header>
+
+        <AnimatePresence>
+          {showHelp && (
+            <div className="agent-modal-overlay" onClick={() => setShowHelp(false)}>
+              <motion.div
+                className="agent-modal"
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <h2 className="agent-modal-title">Help & Support</h2>
+                <p className="agent-modal-subtitle">Quick guide for using the agent dashboard</p>
+                <div className="agent-help-list">
+                  <div className="agent-help-item">
+                    <strong>Transcript</strong>
+                    <p>View live captions, toggle languages, and read aloud messages.</p>
+                  </div>
+                  <div className="agent-help-item">
+                    <strong>Customer</strong>
+                    <p>See customer details, phone number, and session history.</p>
+                  </div>
+                  <div className="agent-help-item">
+                    <strong>Case</strong>
+                    <p>Manage cases, send SMS confirmations, and escalate issues.</p>
+                  </div>
+                  <div className="agent-help-item">
+                    <strong>Settings</strong>
+                    <p>Switch language, enable dual subtitles, and view session info.</p>
+                  </div>
+                </div>
+                <div className="agent-modal-actions">
+                  <button className="btn btn-primary" onClick={() => setShowHelp(false)}>Got it</button>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
 
         <main id="agent-main" className="agent-content">
           {activeTab === 'transcript' && (
@@ -519,111 +497,6 @@ export default function AgentDashboard({ sessionId, onBack }) {
                   </div>
                 </div>
               </div>
-
-              <div className={'agent-side-panel' + (showSidePanel ? ' open' : '')}>
-                <div className="agent-card agent-customer-card">
-                  <div className="agent-customer-header">
-                    <div className="agent-avatar-lg">
-                      <Users size={24} />
-                    </div>
-                    <div>
-                      <div className="agent-customer-name">Customer</div>
-                      <div className="agent-customer-meta">Mobile • MTN Ghana</div>
-                    </div>
-                  </div>
-                  <div className="agent-customer-stats">
-                    <div className="agent-stat">
-                      <div className="agent-stat-value">{transcripts.length}</div>
-                      <div className="agent-stat-label">Messages</div>
-                    </div>
-                    <div className="agent-stat">
-                      <div className="agent-stat-value">{language.toUpperCase()}</div>
-                      <div className="agent-stat-label">Language</div>
-                    </div>
-                    <div className="agent-stat">
-                      <div className="agent-stat-value">98%</div>
-                      <div className="agent-stat-label">Confidence</div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="agent-card agent-details-card">
-                  <h3 className="agent-card-title">Key Details</h3>
-                  <div className="agent-details-list">
-                    {cards.map(card => (
-                      <div key={card.id || card.value} className="agent-detail-item">
-                        <span className="agent-detail-icon">{card.icon}</span>
-                        <div className="agent-detail-content">
-                          <span className="agent-detail-label">{card.label}</span>
-                          <span className="agent-detail-value">{card.value}</span>
-                        </div>
-                      </div>
-                    ))}
-                    {cards.length === 0 && (
-                      <div className="agent-detail-empty">No key details yet</div>
-                    )}
-                  </div>
-                </div>
-
-                <div className="agent-card agent-quick-actions">
-                  <h3 className="agent-card-title">Quick Actions</h3>
-                  <div className="agent-actions-grid">
-                    <button className="agent-action-btn" onClick={() => { setTranscripts([]); setCards([]); setCaseNumber(''); setSmsSent(false); }}>
-                      <div className="agent-action-icon">
-                        <RotateCcw size={18} />
-                      </div>
-                      <span>Reset</span>
-                    </button>
-                    <button className="agent-action-btn" onClick={resolveCase}>
-                      <div className="agent-action-icon">
-                        <Smartphone size={18} />
-                      </div>
-                      <span>Resolve & SMS</span>
-                    </button>
-                    <button className="agent-action-btn agent-action-danger" onClick={escalateCase}>
-                      <div className="agent-action-icon">
-                        <AlertTriangle size={18} />
-                      </div>
-                      <span>Escalate</span>
-                    </button>
-                  </div>
-                </div>
-
-                {smsSent && (
-                  <motion.div
-                    className="sms-phone-card"
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                  >
-                    <div className="sms-phone-icon">
-                      <Smartphone size={20} />
-                    </div>
-                    <div className="sms-phone-body">
-                      <div className="sms-phone-to">To: +233 XX XXX XXXX</div>
-                      <div className="sms-phone-message">
-                         EchoText Ghana: Your support case {caseNumber || 'CASE45678'} has been confirmed. Your refund of fifty Ghana cedis has been approved. Funds will arrive within twenty-four hours.
-                      </div>
-                      <div className="sms-phone-meta">Delivered via SMS Gateway</div>
-                    </div>
-                  </motion.div>
-                )}
-
-                {smsSent && (
-                  <motion.div
-                    className="agent-progress-tracker"
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                  >
-                    <div className="agent-progress-header">
-                      <span className="agent-progress-title">Resolution Progress</span>
-                      <span className="agent-progress-status">In Progress</span>
-                    </div>
-                    <div className="agent-progress-bar">
-                      <div className="agent-progress-fill" style={{ width: '65%' }} />
-                    </div>
-                  </motion.div>
-                )}
-              </div>
             </div>
           )}
 
@@ -694,7 +567,7 @@ export default function AgentDashboard({ sessionId, onBack }) {
                     <div className="agent-case-number">{caseNumber || 'CASE45678'}</div>
                     <div className="agent-case-meta">Opened today • MTN Service Center</div>
                   </div>
-                  <span className={`agent-case-status ${smsSent ? 'resolved' : 'open'}`}>
+                  <span className={'agent-case-status ' + (smsSent ? 'resolved' : 'open')}>
                     {smsSent ? 'Resolved' : 'Open'}
                   </span>
                 </div>
@@ -776,17 +649,61 @@ export default function AgentDashboard({ sessionId, onBack }) {
         </main>
       </div>
 
-      <div
-        className={'agent-mobile-overlay' + (showSidePanel ? ' open' : '')}
-        onClick={() => setShowSidePanel(false)}
-      />
-      <button
-        className="agent-mobile-toggle"
-        onClick={() => setShowSidePanel(true)}
-        aria-label="Open side panel"
-      >
-        <MessageSquare size={22} />
-      </button>
+      {showSignIn && (
+        <div className="agent-modal-overlay" onClick={() => setShowSignIn(false)}>
+          <div className="agent-modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-label="Agent sign in">
+            <h2 className="agent-modal-title">Agent Sign In</h2>
+            <p className="agent-modal-subtitle">Enter your details to access the dashboard</p>
+            <div className="agent-form-group">
+              <label className="agent-label" htmlFor="agent-signin-name">Agent Name</label>
+              <input
+                id="agent-signin-name"
+                className="agent-input"
+                type="text"
+                placeholder="e.g. Augustine Nana"
+                value={signInName}
+                onChange={(e) => setSignInName(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleSignIn()}
+              />
+            </div>
+            <div className="agent-form-group">
+              <label className="agent-label" htmlFor="agent-signin-id">Agent ID</label>
+              <input
+                id="agent-signin-id"
+                className="agent-input"
+                type="text"
+                placeholder="e.g. AGT-1042"
+                value={signInId}
+                onChange={(e) => setSignInId(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleSignIn()}
+              />
+            </div>
+            <div className="agent-modal-actions">
+              <button className="btn btn-secondary" onClick={() => setShowSignIn(false)}>Cancel</button>
+              <button className="btn btn-primary" onClick={handleSignIn}>Sign In</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <nav className="agent-mobile-bottom-nav" aria-label="Mobile navigation">
+        <button className={'agent-mobile-nav-item' + (activeTab === 'transcript' ? ' active' : '')} onClick={() => setActiveTab('transcript')} aria-label="Transcript">
+          <MessageSquare size={20} />
+          <span>Transcript</span>
+        </button>
+        <button className={'agent-mobile-nav-item' + (activeTab === 'customer' ? ' active' : '')} onClick={() => setActiveTab('customer')} aria-label="Customer">
+          <User size={20} />
+          <span>Customer</span>
+        </button>
+        <button className={'agent-mobile-nav-item' + (activeTab === 'case' ? ' active' : '')} onClick={() => setActiveTab('case')} aria-label="Case">
+          <CheckCircle2 size={20} />
+          <span>Case</span>
+        </button>
+        <button className={'agent-mobile-nav-item' + (activeTab === 'settings' ? ' active' : '')} onClick={() => setActiveTab('settings')} aria-label="Settings">
+          <Settings size={20} />
+          <span>Settings</span>
+        </button>
+      </nav>
     </div>
   )
 }

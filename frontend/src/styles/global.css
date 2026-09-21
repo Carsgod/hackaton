@@ -109,6 +109,19 @@
   --accent-dark: #00ff00;
 }
 
+[data-high-contrast="true"][data-theme="dark"] {
+  --bg-primary: #000000;
+  --bg-secondary: #000000;
+  --bg-card: #000000;
+  --bg-card-hover: #000000;
+  --text-primary: #ffffff;
+  --text-secondary: #ffff00;
+  --text-muted: #00ff00;
+  --border-color: #ffffff;
+  --accent: #00ff00;
+  --accent-dark: #00ff00;
+}
+
 * {
   margin: 0;
   padding: 0;

@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Send, RotateCcw, Accessibility,
-  X, AlertTriangle, Smartphone, CheckCircle2, Globe,
+  X, AlertTriangle, Smartphone, CheckCircle2, Globe, Printer,
 } from 'lucide-react'
 import { useWebSocket } from '../hooks/useWebSocket'
 import { useAccessibility } from '../hooks/useAccessibility'
@@ -34,11 +34,14 @@ export default function TranscriptionPage({ sessionId, onBack, demoMode, onCompl
   const [lastError, setLastError] = useState(null)
   const [connectionRestored, setConnectionRestored] = useState(false)
   const [showOnboarding, setShowOnboarding] = useState(false)
+  const [showCompletion, setShowCompletion] = useState(false)
+  const [showScrollTop, setShowScrollTop] = useState(false)
   const messagesEndRef = useRef(null)
   const responseInputRef = useRef(null)
   const intervalRef = useRef(null)
   const timeoutRef = useRef(null)
   const isPlayingRef = useRef(false)
+  const transcriptsContainerRef = useRef(null)
   const safeSessionId = encodeURIComponent(sessionId || '')
   const wsUrl = `${import.meta.env.VITE_BACKEND_URL || 'ws://localhost:8000'}/ws/${safeSessionId}?language=${language}`
 
@@ -97,7 +100,7 @@ export default function TranscriptionPage({ sessionId, onBack, demoMode, onCompl
       setWaitingForCustomer(false)
       setSmsSent(true)
       setCaseNumber('CASE45678')
-      onComplete?.()
+      setShowCompletion(true)
       return
     }
 
@@ -233,6 +236,22 @@ export default function TranscriptionPage({ sessionId, onBack, demoMode, onCompl
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [transcripts])
+
+  useEffect(() => {
+    const el = transcriptsContainerRef.current
+    if (!el) return
+    const handleScroll = () => {
+      setShowScrollTop(el.scrollTop > 300)
+    }
+    el.addEventListener('scroll', handleScroll, { passive: true })
+    return () => el.removeEventListener('scroll', handleScroll)
+  }, [])
+
+  const scrollToTop = () => {
+    const el = transcriptsContainerRef.current
+    if (!el) return
+    el.scrollTo({ top: 0, behavior: 'smooth' })
+  }
 
   useEffect(() => {
     const onOnline = () => setNetworkStatus('online')
@@ -402,7 +421,7 @@ export default function TranscriptionPage({ sessionId, onBack, demoMode, onCompl
       <PinnedCards cards={cards} />
 
       <main id="transcript-main" className="transcription-main">
-        <div className="transcripts-container">
+        <div className="transcripts-container" ref={transcriptsContainerRef}>
           {!hasContent && (
             <div className="transcription-waiting">
               <div className="transcription-waiting-wave">
@@ -457,6 +476,15 @@ export default function TranscriptionPage({ sessionId, onBack, demoMode, onCompl
           </AnimatePresence>
           <div ref={messagesEndRef} />
         </div>
+        {showScrollTop && (
+          <button
+            className="transcription-scroll-top"
+            onClick={scrollToTop}
+            aria-label="Scroll to top"
+          >
+            ↑
+          </button>
+        )}
       </main>
 
       {waitingForCustomer && (
@@ -512,6 +540,60 @@ export default function TranscriptionPage({ sessionId, onBack, demoMode, onCompl
             transition={{ type: 'spring', damping: 26, stiffness: 260 }}
           >
             <AccessibilityControls onClose={() => setShowControls(false)} />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showCompletion && (
+          <motion.div
+            className="completion-overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => {
+              setShowCompletion(false)
+              onComplete?.()
+            }}
+          >
+            <motion.div
+              className="completion-modal"
+              initial={{ scale: 0.92, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.92, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="completion-icon">
+                <CheckCircle2 size={28} />
+              </div>
+              <h2>Support Complete</h2>
+              <p>The agent has updated your case. You can safely leave the counter.</p>
+              <div className="completion-meta">
+                <div className="completion-meta-row">
+                  <span className="completion-meta-label">Case</span>
+                  <span className="completion-meta-value">{caseNumber || 'CASE45678'}</span>
+                </div>
+                <div className="completion-meta-row">
+                  <span className="completion-meta-label">Status</span>
+                  <span className="completion-meta-value">Refund Approved</span>
+                </div>
+                <div className="completion-meta-row">
+                  <span className="completion-meta-label">SMS</span>
+                  <span className="completion-meta-value">Confirmation sent</span>
+                </div>
+              </div>
+              <div className="completion-actions">
+                <button className="btn btn-primary" onClick={() => window.print?.()}>
+                  <Printer size={16} /> Print Receipt
+                </button>
+                <button className="btn btn-secondary" onClick={() => {
+                  setShowCompletion(false)
+                  onComplete?.()
+                }}>
+                  Continue
+                </button>
+              </div>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>

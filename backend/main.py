@@ -1,3 +1,4 @@
+import os
 import asyncio
 import json
 import uuid
@@ -34,9 +35,12 @@ except ImportError:
 
 app = FastAPI(title="EchoText Ghana API", version="1.0.0")
 
+PUBLIC_BASE_URL = os.getenv("PUBLIC_BASE_URL", "https://echotext.gh").rstrip("/")
+CORS_ORIGINS = os.getenv("CORS_ORIGINS", "*").split(",")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -217,7 +221,7 @@ async def translate_conversation_tree(request: TranslationRequest):
 
 @app.get("/api/qr/{counter_id}")
 async def generate_qr(counter_id: str, size: int = Query(10, ge=4, le=20)):
-    base_url = "https://echotext.gh/join"
+    base_url = f"{PUBLIC_BASE_URL}/join"
     qr_data = f"{base_url}/{counter_id}"
     if HAS_QRCODE:
         qr = qrcode_lib.QRCode(version=1, box_size=size, border=4)
@@ -246,7 +250,7 @@ async def generate_qr(counter_id: str, size: int = Query(10, ge=4, le=20)):
 
 @app.get("/api/qr-base64/{counter_id}")
 async def generate_qr_base64(counter_id: str, size: int = Query(10, ge=4, le=20)):
-    base_url = "https://echotext.gh/join"
+    base_url = f"{PUBLIC_BASE_URL}/join"
     qr_data = f"{base_url}/{counter_id}"
     if HAS_QRCODE:
         qr = qrcode_lib.QRCode(version=1, box_size=size, border=4)
