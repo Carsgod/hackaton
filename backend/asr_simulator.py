@@ -16,31 +16,32 @@ class TranscriptSegment:
 
 
 DEMO_CONVERSATION = [
-    {"speaker": "agent", "text": "Good afternoon, welcome to MTN service center. How can I help you today?", "delay": 0.8},
-    {"speaker": "customer", "text": "I sent fifty Ghana cedis to my sister yesterday but she didn't receive it. My account was debited.", "delay": 1.2},
-    {"speaker": "agent", "text": "I'm sorry to hear that. Let me check the transaction for you. Can you tell me the phone number you sent to?", "delay": 1.0},
-    {"speaker": "customer", "text": "Yes, it was zero two four four six five six two two zero.", "delay": 1.0},
-    {"speaker": "agent", "text": "Thank you. I can see the transaction. Reference number is REF88321. It shows fifty Ghana cedis was debited from your account on September twelfth at three forty five PM. The transaction is currently pending on the receiver side.", "delay": 1.5},
-    {"speaker": "customer", "text": "What should I do? Will the money come back?", "delay": 0.9},
-    {"speaker": "agent", "text": "I can initiate a reversal for you. The amount is GHS fifty point zero zero. Do you approve the refund?", "delay": 1.2},
-    {"speaker": "customer", "text": "Yes please, approve the refund.", "delay": 0.8},
-    {"speaker": "agent", "text": "I have approved the refund. Your money will be returned to your mobile money wallet within twenty four hours. Your case number is CASE45678. An SMS confirmation has been sent to your phone number ending in nine zero.", "delay": 1.4},
-    {"speaker": "customer", "text": "Thank you so much. I can read everything on my screen. This is very helpful.", "delay": 1.0},
-    {"speaker": "agent", "text": "You're welcome. If you have any other issues, please don't hesitate to visit us. Have a great day.", "delay": 1.1},
+    {"speaker": "agent", "text": "Good afternoon. Welcome to the MTN Service Centre. How may I assist you today?", "delay": 0.8},
+    {"speaker": "customer", "text": "I sent 50 Ghana cedis to my sister yesterday, but she has not received the money. My MoMo wallet was debited.", "delay": 1.2},
+    {"speaker": "agent", "text": "I'm sorry about that. Let me check the transaction status for you. Could you please provide the phone number you sent the money to?", "delay": 1.0},
+    {"speaker": "customer", "text": "Yes. It was 0244656220.", "delay": 1.0},
+    {"speaker": "agent", "text": "Thank you. I have located the transaction. The transaction reference is REF88321. It shows that GHS 50.00 was debited from your MoMo wallet on September 12 at 3:45 PM. The transaction is currently pending on the receiver's side.", "delay": 1.5},
+    {"speaker": "customer", "text": "What should I do? Will the money be returned to my wallet?", "delay": 0.9},
+    {"speaker": "agent", "text": "I can submit a reversal request for the transaction. The amount is GHS 50.00. Would you like me to proceed with the reversal?", "delay": 1.2},
+    {"speaker": "customer", "text": "Yes, please. Proceed with the reversal.", "delay": 0.8},
+    {"speaker": "agent", "text": "The reversal request has been submitted successfully. The GHS 50.00 will be returned to your MoMo wallet within 24 hours. Your case number is CASE45678. An SMS confirmation has been sent to your registered phone number ending in 90.", "delay": 1.4},
+    {"speaker": "customer", "text": "Thank you very much. I can read everything on my screen. This is very helpful.", "delay": 1.0},
+    {"speaker": "agent", "text": "You're welcome. If you need any further assistance, please contact MTN Customer Service. Have a great day.", "delay": 1.1},
 ]
 
+
 DEMO_CONVERSATION_TWI = [
-    {"speaker": "agent", "text": "Ahobrasee, akwaaba ba MTN service center no. Dɛn na metumi ayɛ wo nnɛ?", "delay": 0.8},
-    {"speaker": "customer", "text": "Mɛtrɛɛ Ghana cedis ahahanu kɔɔ me nuabea nkyɛn nnora, na ɔnnyaa. Me account no bɔɔ me ka.", "delay": 1.2},
-    {"speaker": "agent", "text": "Mente ase. Ma me hwɛ transaction no. Bɛtumi ka wo telefon number no a wokɔɔ hɔ no?", "delay": 1.0},
-    {"speaker": "customer", "text": "Aane, na ɛyɛ zero two four four six five six two two zero.", "delay": 1.0},
-    {"speaker": "agent", "text": "Medaase. Mɛ hu transaction no. Reference number yɛ REF88321. Ɛkyerɛ sɛ Ghana cedis ahahanu bɔɔ wo ka wɔ September twelfth, three forty five PM. Transaction no da so wɔ receiver nkyɛn.", "delay": 1.5},
-    {"speaker": "customer", "text": "Dɛn na menyɛ? Sika no bɛsan aba?", "delay": 0.9},
-    {"speaker": "agent", "text": "Metumi asan nkɔma wo. Sika no yɛ GHS fifty point zero zero. Wopɛ sɛ me ma refund?", "delay": 1.2},
-    {"speaker": "customer", "text": "Aane, please ma me refund.", "delay": 0.8},
-    {"speaker": "agent", "text": "Mɛma refund no. Wo sika bɛsan aba wo mobile money wallet mu wɔ nnɔnhwerehahanu mu. Wo case number yɛ CASE45678. SMS confirmation no akɔ wo telefon number a ɛwɔ nine zero no.", "delay": 1.4},
-    {"speaker": "customer", "text": "Medaase pii. Metumi akenkan biribiara wɔ me screen so. Ɛyɛ hwee.", "delay": 1.0},
-    {"speaker": "agent", "text": "Yɛ akyekyerɛ. Sɛ wo wɔ nsɛm foforo bi a, ɛnsɛ sɛ wo ho yɛ hu. Da biara wo nsa.", "delay": 1.1},
+    {"speaker": "agent", "text": "Mema wo aha. Yɛma wo akwaaba wɔ MTN Service Centre. Ɛdeɛn na metumi aboa wo nnɛ?", "delay": 0.8},
+    {"speaker": "customer", "text": "Mede Ghana cedis 50 kɔmaa me nuabea nnora, nanso ɔnnyaa sika no. Wɔbɔɔ me MoMo wallet no ka.", "delay": 1.2},
+    {"speaker": "agent", "text": "Mepa wo kyɛw, meyɛ awerɛhow sɛ eyi ato wo. Ma menhwɛ transaction no na mahu nea asi. Wubetumi ama me telefon nɔma a wode kɔmaa sika no?", "delay": 1.0},
+    {"speaker": "customer", "text": "Aane. Ɛyɛ 0244656220.", "delay": 1.0},
+    {"speaker": "agent", "text": "Meda wo ase. Mahu transaction no. Transaction reference no yɛ REF88321. Ɛkyerɛ sɛ wɔbɔɔ wo MoMo wallet no GHS 50 ka wɔ September 12, 3:45 PM. Mprempren, transaction no da so retwɛn wɔ nea ogyee sika no nkyɛn.", "delay": 1.5},
+    {"speaker": "customer", "text": "Dɛn na ɛsɛ sɛ meyɛ? Sika no bɛsan aba me wallet mu anaa?", "delay": 0.9},
+    {"speaker": "agent", "text": "Metumi de reversal request akɔma ama transaction no. Sika no yɛ GHS 50. Wopɛ sɛ yɛyɛ reversal no?", "delay": 1.2},
+    {"speaker": "customer", "text": "Aane, mesrɛ wo. Yɛ reversal no.", "delay": 0.8},
+    {"speaker": "agent", "text": "Yɛde reversal request no akɔma. GHS 50 no bɛsan aba wo MoMo wallet mu wɔ nnɔnhwere 24 mu. Wo case number yɛ CASE45678. Yɛde SMS confirmation akɔ wo telefon nɔma a ɛba 90 so.", "delay": 1.4},
+    {"speaker": "customer", "text": "Meda mo ase pii. Metumi akenkan biribiara a ɛwɔ me screen so. Eyi aboa me paa.", "delay": 1.0},
+    {"speaker": "agent", "text": "Yɛma wo akwaaba. Sɛ wohia mmoa foforo biara a, yɛsrɛ wo, wo ne MTN Customer Service nni nkitaho. Da no nkɔ yie mma wo.", "delay": 1.1},
 ]
 
 

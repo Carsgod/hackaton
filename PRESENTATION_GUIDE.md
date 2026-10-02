@@ -1,6 +1,6 @@
 # EchoText Ghana — Presentation Guide
 
-Use this guide to structure your demo and Q&A around the judging criteria.
+
 
 ---
 

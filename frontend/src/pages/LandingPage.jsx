@@ -4,7 +4,7 @@ import { Camera, Scan, Smartphone, MessageSquare, Volume2, Accessibility, Globe,
 import { useAccessibility } from '../hooks/useAccessibility'
 import AccessibilityControls from '../components/AccessibilityControls'
 
-export default function LandingPage({ onJoinSession, onStartDemo, onOpenAgent }) {
+export default function LandingPage({ onJoinSession, onStartDemo, onOpenAgent, onViewQR, onOpenSupervisor }) {
   const [sessionId, setSessionId] = useState('')
   const [isScanning, setIsScanning] = useState(false)
   const [scanResult, setScanResult] = useState(null)
@@ -75,21 +75,22 @@ export default function LandingPage({ onJoinSession, onStartDemo, onOpenAgent })
       setTimeout(() => {
         clearInterval(detectInterval)
         videoRef.current?.srcObject?.getTracks().forEach(t => t.stop())
-        const mockSessionId = `MTN_${Math.random().toString(36).substr(2, 6).toUpperCase()}`
+        const mockSessionId = `counter_${Math.floor(Math.random() * 3) + 1}`
         setScanResult(mockSessionId)
         setIsScanning(false)
       }, 3000)
     } catch (err) {
-      console.error('Camera error:', err)
-      const mockSessionId = `MTN_${Math.random().toString(36).substr(2, 6).toUpperCase()}`
+
+      const mockSessionId = `counter_${Math.floor(Math.random() * 3) + 1}`
       setScanResult(mockSessionId)
       setIsScanning(false)
     }
   }
 
-  const handleJoin = () => {
+  const handleJoin = async () => {
     const id = sessionId.trim() || scanResult
-    if (id) onJoinSession(id)
+    if (!id) return
+    onJoinSession(id)
   }
 
   return (
@@ -108,19 +109,22 @@ export default function LandingPage({ onJoinSession, onStartDemo, onOpenAgent })
               <span></span>
             </span>
           </button>
-          <div ref={navRef} className={'nav-links' + (mobileOpen ? ' nav-links-open' : '')}>
-            <a className="nav-link" href="#features" onClick={() => setMobileOpen(false)}>Features</a>
-            <a className="nav-link" href="#how-it-works" onClick={() => setMobileOpen(false)}>How It Works</a>
-            <button className="btn btn-primary nav-cta" onClick={() => { onStartDemo?.(); setMobileOpen(false) }}>
-              <Play size={16} /> Try Demo
-            </button>
-            <button className="btn btn-secondary nav-cta" onClick={() => { onOpenAgent?.('MTN_COUNTER_01'); setMobileOpen(false) }}>
-              Agent Dashboard
-            </button>
-            <button className="btn-icon nav-accessibility-btn" onClick={() => setShowAccessibility(true)} aria-label="Accessibility settings">
-              <Accessibility size={20} />
-            </button>
-          </div>
+           <div ref={navRef} className={'nav-links' + (mobileOpen ? ' nav-links-open' : '')}>
+             <a className="nav-link" href="#features" onClick={() => setMobileOpen(false)}>Features</a>
+             <a className="nav-link" href="#how-it-works" onClick={() => setMobileOpen(false)}>How It Works</a>
+             <button className="btn btn-primary nav-cta" onClick={() => { onStartDemo?.(); setMobileOpen(false) }}>
+               <Play size={16} /> Try Demo
+             </button>
+              <button className="btn btn-secondary nav-cta" onClick={() => { onViewQR?.(); setMobileOpen(false) }}>
+                Counter QR Codes
+              </button>
+              <button className="btn btn-secondary nav-cta" onClick={() => { onOpenSupervisor?.(); setMobileOpen(false) }}>
+                Supervisor
+              </button>
+              <button className="btn-icon nav-accessibility-btn" onClick={() => setShowAccessibility(true)} aria-label="Accessibility settings">
+                <Accessibility size={20} />
+              </button>
+            </div>
           <div className={'nav-overlay' + (mobileOpen ? ' nav-overlay-open' : '')} onClick={() => setMobileOpen(false)} />
         </div>
       </nav>
@@ -315,17 +319,17 @@ export default function LandingPage({ onJoinSession, onStartDemo, onOpenAgent })
         <div className="container">
           <div className="join-card">
             <h2>Join a Live Session</h2>
-            <p>Enter a session ID or scan the QR code at the counter</p>
+            <p>Scan the QR code at the counter or enter the counter ID</p>
             <div className="join-form">
               <input
-                id="session-id-input"
+                id="counter-id-input"
                 type="text"
-                placeholder="Enter Session ID (e.g., MTN_ABC123)"
+                placeholder="Enter Counter ID (e.g., counter_1)"
                 value={sessionId}
                 onChange={(e) => setSessionId(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleJoin()}
                 className="join-input"
-                aria-label="Session ID"
+                aria-label="Counter ID"
               />
               <button className="btn btn-primary" onClick={handleJoin} disabled={!sessionId.trim() && !scanResult}>
                 Join <ArrowRight size={16} />

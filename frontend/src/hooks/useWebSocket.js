@@ -6,6 +6,7 @@ export function useWebSocket(url, onMessage, onConnect, onDisconnect) {
   const wsRef = useRef(null)
   const reconnectTimeoutRef = useRef(null)
   const reconnectAttemptsRef = useRef(0)
+  const intentionalCloseRef = useRef(false)
   const urlRef = useRef(url)
   const onMessageRef = useRef(onMessage)
   const onConnectRef = useRef(onConnect)
@@ -21,11 +22,14 @@ export function useWebSocket(url, onMessage, onConnect, onDisconnect) {
       return
     }
 
+    intentionalCloseRef.current = false
+
     try {
       const ws = new WebSocket(urlRef.current)
       wsRef.current = ws
 
       ws.onopen = () => {
+        console.info('[ws] open', urlRef.current)
         setIsConnected(true)
         setError(null)
         reconnectAttemptsRef.current = 0
@@ -35,19 +39,26 @@ export function useWebSocket(url, onMessage, onConnect, onDisconnect) {
       ws.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data)
+          console.info('[ws] message', data)
           onMessageRef.current?.(data)
         } catch {
+          console.info('[ws] raw', event.data)
           onMessageRef.current?.({ type: 'raw', data: event.data })
         }
       }
 
       ws.onerror = () => {
+        console.error('[ws] error', urlRef.current)
         setError('Connection error')
       }
 
       ws.onclose = () => {
+        console.info('[ws] close', urlRef.current)
         setIsConnected(false)
         onDisconnectRef.current?.()
+        if (intentionalCloseRef.current) {
+          return
+        }
         const maxRetries = 5
         if (reconnectAttemptsRef.current < maxRetries) {
           const delay = Math.min(1000 * Math.pow(2, reconnectAttemptsRef.current), 5000)
@@ -64,6 +75,7 @@ export function useWebSocket(url, onMessage, onConnect, onDisconnect) {
   }, [])
 
   const disconnect = useCallback(() => {
+    intentionalCloseRef.current = true
     if (reconnectTimeoutRef.current) {
       clearTimeout(reconnectTimeoutRef.current)
       reconnectTimeoutRef.current = null

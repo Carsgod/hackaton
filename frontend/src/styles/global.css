@@ -122,6 +122,19 @@
   --accent-dark: #00ff00;
 }
 
+[data-theme="light"][data-high-contrast="true"] {
+  --bg-primary: #ffffff;
+  --bg-secondary: #f0f4f2;
+  --bg-card: #ffffff;
+  --bg-card-hover: #e6f7ef;
+  --text-primary: #000000;
+  --text-secondary: #006331;
+  --text-muted: #007a3d;
+  --border-color: #000000;
+  --accent: #004d25;
+  --accent-dark: #004d25;
+}
+
 * {
   margin: 0;
   padding: 0;

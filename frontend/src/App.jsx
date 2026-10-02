@@ -1,9 +1,12 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import LandingPage from './pages/LandingPage'
 import TranscriptionPage from './pages/TranscriptionPage'
 import DemoPage from './pages/DemoPage'
+import AgentLogin from './pages/AgentLogin'
 import AgentDashboard from './pages/AgentDashboard'
+import QRPage from './pages/QRPage'
 import CompletionScreen from './pages/CompletionScreen'
+import SupervisorDashboard from './pages/SupervisorDashboard'
 import ErrorBoundary from './components/ErrorBoundary'
 
 function App() {
@@ -12,9 +15,23 @@ function App() {
   const [demoMode, setDemoMode] = useState(false)
   const [renderError, setRenderError] = useState(null)
   const [completion, setCompletion] = useState(null)
+  const [agentLoginState, setAgentLoginState] = useState(null)
+
+  useEffect(() => {
+    const path = window.location.pathname
+    const match = path.match(/^\/join\/(.+)$/)
+    if (match) {
+      const counterId = normalizeSessionId(match[1])
+      setSessionId(counterId)
+      setDemoMode(false)
+      setView('transcription')
+    }
+  }, [])
+
+  const normalizeSessionId = (id) => String(id || '').trim().toLowerCase()
 
   const handleJoinSession = (id) => {
-    setSessionId(id)
+    setSessionId(normalizeSessionId(id))
     setDemoMode(false)
     setView('transcription')
     setRenderError(null)
@@ -34,12 +51,31 @@ function App() {
     setDemoMode(false)
     setRenderError(null)
     setCompletion(null)
+    setAgentLoginState(null)
+    window.history.pushState({}, '', '/')
   }
 
   const handleOpenAgent = (id) => {
-    setSessionId(id || `agent_${Date.now()}`)
-    setView('agent')
+    setSessionId(normalizeSessionId(id || 'counter_1'))
+    setView('agentLogin')
     setRenderError(null)
+  }
+
+  const handleViewQR = () => {
+    setView('qr')
+    setRenderError(null)
+  }
+
+  const handleOpenSupervisor = () => {
+    setView('supervisor')
+    setRenderError(null)
+  }
+
+  const handleAgentLogin = (state) => {
+    setAgentLoginState(state)
+    const finalSessionId = normalizeSessionId(state.counterId || sessionId || 'counter_1')
+    setSessionId(finalSessionId)
+    setView('agent')
   }
 
   const handleComplete = (data) => {
@@ -91,19 +127,56 @@ function App() {
     )
   }
 
+  if (view === 'qr') {
+    return (
+      <ErrorBoundary onError={(err) => setRenderError(err instanceof Error ? err : new Error(String(err)))}>
+        {() => <QRPage onBack={handleBack} />}
+      </ErrorBoundary>
+    )
+  }
+
+  if (view === 'supervisor') {
+    return (
+      <ErrorBoundary onError={(err) => setRenderError(err instanceof Error ? err : new Error(String(err)))}>
+        {() => <SupervisorDashboard onBack={handleBack} />}
+      </ErrorBoundary>
+    )
+  }
+
+  if (view === 'agentLogin') {
+    return (
+      <ErrorBoundary onError={(err) => setRenderError(err instanceof Error ? err : new Error(String(err)))}>
+        {() => <AgentLogin onBack={handleBack} onLogin={handleAgentLogin} initialCounterId={sessionId} />}
+      </ErrorBoundary>
+    )
+  }
+
   if (view === 'agent' && sessionId) {
     return (
       <ErrorBoundary onError={(err) => setRenderError(err instanceof Error ? err : new Error(String(err)))}>
-        {() => <AgentDashboard sessionId={sessionId} onBack={handleBack} />}
+        {() => <AgentDashboard sessionId={sessionId} demoMode={demoMode} onBack={handleBack} agentLogin={agentLoginState} />}
       </ErrorBoundary>
     )
   }
 
   if (view === 'transcription' && sessionId) {
-    return <TranscriptionPage sessionId={sessionId} demoMode={demoMode} onBack={handleBack} onComplete={() => handleComplete({ caseNumber: 'CASE45678', status: 'Refund Approved' })} />
+    return (
+      <ErrorBoundary onError={(err) => setRenderError(err instanceof Error ? err : new Error(String(err)))}>
+        {() => (
+          <TranscriptionPage
+            key={sessionId}
+            sessionId={sessionId}
+            demoMode={demoMode}
+            onBack={handleBack}
+            onComplete={() => handleComplete({ caseNumber: 'CASE45678', status: 'Refund Approved' })}
+          />
+        )}
+      </ErrorBoundary>
+    )
   }
 
-  return <LandingPage onJoinSession={handleJoinSession} onStartDemo={handleStartDemo} onOpenAgent={handleOpenAgent} />
+  return <LandingPage onJoinSession={handleJoinSession} onStartDemo={handleStartDemo} onViewQR={handleViewQR} onOpenSupervisor={handleOpenSupervisor} />
 }
 
 export default App
+

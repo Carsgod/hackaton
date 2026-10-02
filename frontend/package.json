@@ -5,8 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:agent": "vite --port 3002",
     "build": "vite build",
-    "preview": "vite preview"
+    "build:agent": "vite build --config vite.agent.config.js",
+    "preview": "vite preview",
+    "preview:agent": "vite preview --port 4173"
   },
   "dependencies": {
     "react": "^18.2.0",

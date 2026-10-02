@@ -24,6 +24,7 @@ export default function DemoPage({ onBack, onComplete }) {
   const intervalRef = useRef(null)
   const timeoutRef = useRef(null)
   const isPlayingRef = useRef(false)
+  const showCompletionRef = useRef(false)
 
   const clearTimers = () => {
     clearInterval(intervalRef.current)
@@ -35,11 +36,13 @@ export default function DemoPage({ onBack, onComplete }) {
   const showAgentNode = (nodeId) => {
     const node = tree[nodeId]
     if (!node) {
+      if (showCompletionRef.current) return
       setIsPlaying(false)
       isPlayingRef.current = false
       setWaitingForCustomer(false)
       setSmsSent(true)
       setCaseNumber('CASE45678')
+      showCompletionRef.current = true
       setShowCompletion(true)
       return
     }
@@ -56,6 +59,19 @@ export default function DemoPage({ onBack, onComplete }) {
     setSuggestions((node.options || []).map(option => option.label))
     setWaitingForCustomer(true)
     setCustomerInput('')
+
+    if (!node.options || node.options.length === 0) {
+      if (showCompletionRef.current) return
+      setTimeout(() => {
+        setIsPlaying(false)
+        isPlayingRef.current = false
+        setWaitingForCustomer(false)
+        setSmsSent(true)
+        setCaseNumber('CASE45678')
+        showCompletionRef.current = true
+        setShowCompletion(true)
+      }, 1500 / speed)
+    }
   }
 
   const sendCustomerResponse = (text) => {
@@ -87,9 +103,14 @@ export default function DemoPage({ onBack, onComplete }) {
       setWaitingForCustomer(false)
       setSuggestions([])
       setCustomerInput('')
+      setSmsSent(false)
+      setCaseNumber('')
+      setOfflineQueue(0)
+      showCompletionRef.current = false
+      setShowCompletion(false)
       showAgentNode('root')
     } catch (err) {
-      console.error('Demo start failed', err)
+
       setIsPlaying(false)
       isPlayingRef.current = false
     }
@@ -113,6 +134,8 @@ export default function DemoPage({ onBack, onComplete }) {
     setWaitingForCustomer(false)
     setSuggestions([])
     setCustomerInput('')
+    showCompletionRef.current = false
+    setShowCompletion(false)
   }
 
   const skipToNext = () => {
@@ -343,6 +366,7 @@ export default function DemoPage({ onBack, onComplete }) {
               exit={{ opacity: 0 }}
               onClick={() => {
                 setShowCompletion(false)
+                showCompletionRef.current = false
                 onComplete?.()
               }}
             >

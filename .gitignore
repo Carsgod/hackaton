@@ -40,3 +40,12 @@ Thumbs.db
 # Logs
 logs/
 *.log
+
+# Project-specific
+.hackathon/
+frontend/dist-agent/
+backend/translation_cache.json
+
+# Optional scripts not needed for deploy
+backend/seed_translation_cache.py
+backend/test_ws.py
