@@ -1,0 +1,5 @@
+dist-agent/
+.hackathon/
+node_modules/
+.git/
+.gitignore

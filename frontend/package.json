@@ -8,6 +8,7 @@
     "dev:agent": "vite --port 3002",
     "build": "vite build",
     "build:agent": "vite build --config vite.agent.config.js",
+    "build:all": "npm run build && npm run build:agent && node scripts/copy-agent.mjs",
     "preview": "vite preview",
     "preview:agent": "vite preview --port 4173"
   },
