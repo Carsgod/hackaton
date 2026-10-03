@@ -75,7 +75,8 @@ export default function TranscriptionPage({ sessionId, onBack, demoMode, onCompl
 
   const connectionState = connectionStatus === 'connected' ? 'live' : connectionStatus === 'connecting' ? 'connecting' : connectionStatus === 'ended' ? 'ended' : 'offline'
   const isOnline = networkStatus === 'online'
-  const showOfflineBanner = !isOnline || connectionState !== 'live'
+  const showOfflineBanner = !isOnline
+  const hasConnectionError = Boolean(lastError)
   const lastTranscript = transcripts[transcripts.length - 1]
   const isWaitingForResponse = waitingForCustomer || (lastTranscript && lastTranscript.speaker === 'agent')
 
@@ -721,14 +722,14 @@ export default function TranscriptionPage({ sessionId, onBack, demoMode, onCompl
         </div>
       )}
 
-      {connectionRestored && (
-        <div className="transcription-success-banner" role="status" aria-live="polite">
-          <CheckCircle2 size={16} />
-          <span>Connection restored</span>
+      {!isOnline && (
+        <div className="transcription-offline-banner" role="status" aria-live="polite">
+          <AlertTriangle size={16} />
+          <span>You are offline. Messages will sync when connection is restored.</span>
         </div>
       )}
 
-      {lastError && !showOfflineBanner && (
+      {hasConnectionError && (
         <div className="transcription-error-banner" role="alert">
           <AlertTriangle size={16} />
           <span>{lastError}</span>

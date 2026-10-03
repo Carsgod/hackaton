@@ -2,6 +2,13 @@ import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { Shield, ArrowLeft, Lock, User, Eye, EyeOff } from 'lucide-react'
 
+const getBackendBaseUrl = () => {
+  const raw = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000'
+  if (raw.startsWith('ws://')) return raw.replace(/^ws:\/\//, 'http://')
+  if (raw.startsWith('wss://')) return raw.replace(/^wss:\/\//, 'https://')
+  return raw
+}
+
 export default function AgentLogin({ onBack, onLogin, initialCounterId }) {
   const [counterId, setCounterId] = useState(initialCounterId || '')
   const [pin, setPin] = useState('')
@@ -19,7 +26,8 @@ export default function AgentLogin({ onBack, onLogin, initialCounterId }) {
     }
     setLoading(true)
     try {
-      const res = await fetch('/api/counter/validate-pin', {
+      const baseUrl = getBackendBaseUrl()
+      const res = await fetch(`${baseUrl}/api/counter/validate-pin`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ counter_id: counterId.trim(), pin: pin.trim() }),
