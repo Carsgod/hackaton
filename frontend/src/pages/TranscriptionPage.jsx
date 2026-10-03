@@ -729,16 +729,6 @@ export default function TranscriptionPage({ sessionId, onBack, demoMode, onCompl
         </div>
       )}
 
-      {hasConnectionError && (
-        <div className="transcription-error-banner" role="alert">
-          <AlertTriangle size={16} />
-          <span>{lastError}</span>
-          <button className="transcription-status-retry" onClick={retryConnection} disabled={retrying}>
-            {retrying ? 'Retrying...' : 'Retry'}
-          </button>
-        </div>
-      )}
-
       {offlineQueue.length > 0 && (
         <div className="transcription-offline-queue" role="status" aria-live="polite">
           <AlertTriangle size={16} />
