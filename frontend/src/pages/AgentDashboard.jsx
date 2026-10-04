@@ -431,9 +431,8 @@ export default function AgentDashboard({ sessionId, demoMode, onBack, agentLogin
         if (event.data.size > 0) chunks.push(event.data)
       }
       mediaRecorder.onstop = async () => {
-        console.info('[asr] onstop', { chunkCount: chunks.length, blobSize: chunks.reduce((sum, c) => sum + c.size, 0) })
         const audioBlob = new Blob(chunks, { type: mimeType })
-        console.info('[asr] audioBlob', { size: audioBlob.size, type: audioBlob.type })
+        const recordingUrl = URL.createObjectURL(audioBlob)
         setLastRecordingUrl(recordingUrl)
         stream.getTracks().forEach(track => track.stop())
         setIsRecording(false)
