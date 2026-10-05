@@ -371,7 +371,6 @@ export default function AgentDashboard({ sessionId, demoMode, onBack, agentLogin
   const onConnect = useCallback(() => {
     setConnectionStatus('connected')
     setPinError('')
-    restoreConversation()
   }, [sessionId])
   const onDisconnect = useCallback(() => setConnectionStatus('disconnected'), [])
 

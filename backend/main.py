@@ -1052,9 +1052,7 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
             "customer_language": customer_language if role == "agent" else None,
             "timestamp": int(time.time() * 1000),
         }
-        if role == "agent" and session and session.transcripts:
-            connected_payload["transcripts"] = session.transcripts
-            connected_payload["cards"] = session.cards
+        if role == "agent" and session:
             connected_payload["case_summary"] = manager._compute_case_summary(session)
         await manager.send_json(session_id, connected_payload)
 
