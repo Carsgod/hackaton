@@ -1250,21 +1250,6 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
                             "role": role,
                             "timestamp": int(time.time() * 1000),
                         })
-                        await manager.broadcast(session_id, {"type": "status", "status": "ended"}, exclude_role=role)
-                        try:
-                            post_call = await manager.send_post_call_summary(session_id)
-                            await manager.send_to_role(session_id, "agent", {
-                                "type": "post_call_summary",
-                                "data": post_call,
-                                "timestamp": int(time.time() * 1000),
-                            })
-                            await manager.send_to_role(session_id, "customer", {
-                                "type": "post_call_summary",
-                                "data": post_call,
-                                "timestamp": int(time.time() * 1000),
-                            })
-                        except Exception:
-                            pass
                 except json.JSONDecodeError:
                     pass
         except WebSocketDisconnect:
