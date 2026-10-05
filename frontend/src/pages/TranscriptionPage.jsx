@@ -43,6 +43,7 @@ export default function TranscriptionPage({ sessionId, onBack, demoMode, onCompl
   const [speed, setSpeed] = useState(1)
   const [speakingId, setSpeakingId] = useState(null)
   const [translationMode, setTranslationMode] = useState('translated')
+  const [showAgentTyping, setShowAgentTyping] = useState(false)
   const responseInputRef = useRef(null)
   const intervalRef = useRef(null)
   const timeoutRef = useRef(null)
@@ -338,6 +339,12 @@ export default function TranscriptionPage({ sessionId, onBack, demoMode, onCompl
       case 'ack':
         setCustomerResponse('')
         break
+      case 'typing':
+        if (data.role === 'agent') {
+          setShowAgentTyping(true)
+          setTimeout(() => setShowAgentTyping(false), 2000)
+        }
+        break
       case 'error':
         setLastError(data.message || 'Connection error')
         break
@@ -417,10 +424,17 @@ export default function TranscriptionPage({ sessionId, onBack, demoMode, onCompl
   }, [isConnected, demoMode, send, dualLanguage])
 
   useEffect(() => {
-    if (isConnected && demoMode) {
-      send({ type: 'start_demo' })
-    }
+    if (demoMode || !isConnected) return
+    send({ type: 'start_demo' })
   }, [isConnected, demoMode, send])
+
+  useEffect(() => {
+    if (!isConnected || !customerResponse.trim()) return
+    const timer = setTimeout(() => {
+      send({ type: 'typing', data: {} })
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [customerResponse, isConnected, send])
 
   const checkNearBottom = useCallback(() => {
     const el = transcriptsContainerRef.current
@@ -796,6 +810,14 @@ export default function TranscriptionPage({ sessionId, onBack, demoMode, onCompl
               </motion.div>
             ))}
           </AnimatePresence>
+          {showAgentTyping && (
+            <div className="typing-indicator" aria-live="polite">
+              <span className="typing-dot" />
+              <span className="typing-dot" />
+              <span className="typing-dot" />
+              <span className="typing-label">Agent is typing</span>
+            </div>
+          )}
         </div>
         {showScrollTop && (
           <button

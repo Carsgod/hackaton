@@ -1236,7 +1236,13 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
                                 "case_summary": session.case_summary,
                                 "timestamp": int(time.time() * 1000),
                             })
-                    elif msg_type == "end":
+                    elif msg_type == "typing":
+                        other_role = "agent" if role == "customer" else "customer"
+                        await manager.send_to_role(session_id, other_role, {
+                            "type": "typing",
+                            "role": role,
+                            "timestamp": int(time.time() * 1000),
+                        })
                         await manager.broadcast(session_id, {"type": "status", "status": "ended"}, exclude_role=role)
                         try:
                             post_call = await manager.send_post_call_summary(session_id)
@@ -1287,7 +1293,7 @@ async def get_languages():
 async def asr_agent_speech(file: UploadFile = File(...), language: str = Form("en")):
     logger.info("[asr] request received filename=%s content_type=%s language=%s", file.filename, file.content_type, language)
     try:
-        api_url = os.getenv("HCI_LAB_SPEECH_API_URL", "https://lab-subscription-platform.vercel.app/api/v1/asr")
+        api_url = os.getenv("HCI_LAB_SPEECH_API_URL", "https://lab-subscription-platform.vercel.app/api/v1/asr").strip()
         token = os.getenv("HCI_LAB_SPEECH_TOKEN")
         if not token:
             raise HTTPException(status_code=500, detail="HCI Lab ASR token is not configured")

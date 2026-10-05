@@ -63,6 +63,7 @@ export default function AgentDashboard({ sessionId, demoMode, onBack, agentLogin
   const [restoringConversation, setRestoringConversation] = useState(false)
   const [caseSummary, setCaseSummary] = useState({})
   const [offlineQueue, setOfflineQueue] = useState([])
+  const [showCustomerTyping, setShowCustomerTyping] = useState(false)
   const [metrics, setMetrics] = useState({})
   const [showMetrics, setShowMetrics] = useState(false)
   const [agentSuggestions, setAgentSuggestions] = useState([])
@@ -302,6 +303,12 @@ export default function AgentDashboard({ sessionId, demoMode, onBack, agentLogin
         break
       case 'ack':
         setAgentInput('')
+        break
+      case 'typing':
+        if (data.role === 'customer') {
+          setShowCustomerTyping(true)
+          setTimeout(() => setShowCustomerTyping(false), 2000)
+        }
         break
       case 'error':
         setPinError(data.message || 'Connection error')
@@ -750,6 +757,14 @@ export default function AgentDashboard({ sessionId, demoMode, onBack, agentLogin
     return () => clearTimeout(timer)
   }, [connectionStatus, smsSent])
 
+  useEffect(() => {
+    if (connectionStatus !== 'connected' || !agentInput.trim()) return
+    const timer = setTimeout(() => {
+      send({ type: 'typing', data: {} })
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [agentInput, connectionStatus, send])
+
   const sendAgentResponse = (text) => {
     if (!text.trim()) return
     const message = { type: 'response', data: { text: text.trim(), speaker: 'agent', timestamp: Date.now() } }
@@ -1067,6 +1082,14 @@ export default function AgentDashboard({ sessionId, demoMode, onBack, agentLogin
                           </button>
                         </motion.div>
                       ))}
+                      {showCustomerTyping && (
+                        <div className="typing-indicator" aria-live="polite">
+                          <span className="typing-dot" />
+                          <span className="typing-dot" />
+                          <span className="typing-dot" />
+                          <span className="typing-label">Customer is typing</span>
+                        </div>
+                      )}
                     </AnimatePresence>
                   </div>
                 </div>
