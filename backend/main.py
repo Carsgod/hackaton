@@ -130,6 +130,10 @@ class ConnectionManager:
                 self.sessions[session_id].language = language
             elif role == "agent":
                 self.sessions[session_id].agent_language = language
+                self.sessions[session_id].status = "active"
+                self.sessions[session_id].transcripts = []
+                self.sessions[session_id].cards = []
+                self.sessions[session_id].case_summary = {}
         self.sessions[session_id].connected_at = time.time()
         logger.info("[ws] connect session=%s role=%s language=%s active_roles=%s", session_id, role, language, list(self.active_connections.get(session_id, {}).keys()))
 
