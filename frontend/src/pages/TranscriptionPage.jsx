@@ -424,7 +424,7 @@ export default function TranscriptionPage({ sessionId, onBack, demoMode, onCompl
   }, [isConnected, demoMode, send, dualLanguage])
 
   useEffect(() => {
-    if (demoMode || !isConnected) return
+    if (!demoMode || !isConnected) return
     send({ type: 'start_demo' })
   }, [isConnected, demoMode, send])
 
