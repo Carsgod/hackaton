@@ -19,7 +19,6 @@ export default function DemoPage({ onBack, onComplete }) {
   const [suggestions, setSuggestions] = useState([])
   const [currentNodeId, setCurrentNodeId] = useState('root')
   const [isPlaying, setIsPlaying] = useState(false)
-  const [showCompletion, setShowCompletion] = useState(false)
   const [tree, setTree] = useState(DEMO_TREE_EN)
   const intervalRef = useRef(null)
   const timeoutRef = useRef(null)
@@ -43,7 +42,7 @@ export default function DemoPage({ onBack, onComplete }) {
       setSmsSent(true)
       setCaseNumber('CASE45678')
       showCompletionRef.current = true
-      setShowCompletion(true)
+      onComplete?.()
       return
     }
 
@@ -69,7 +68,7 @@ export default function DemoPage({ onBack, onComplete }) {
         setSmsSent(true)
         setCaseNumber('CASE45678')
         showCompletionRef.current = true
-        setShowCompletion(true)
+        onComplete?.()
       }, 1500 / speed)
     }
   }
@@ -107,7 +106,6 @@ export default function DemoPage({ onBack, onComplete }) {
       setCaseNumber('')
       setOfflineQueue(0)
       showCompletionRef.current = false
-      setShowCompletion(false)
       showAgentNode('root')
     } catch (err) {
 
@@ -135,7 +133,6 @@ export default function DemoPage({ onBack, onComplete }) {
     setSuggestions([])
     setCustomerInput('')
     showCompletionRef.current = false
-    setShowCompletion(false)
   }
 
   const skipToNext = () => {
@@ -356,61 +353,6 @@ export default function DemoPage({ onBack, onComplete }) {
             </div>
           </motion.div>
         )}
-
-        <AnimatePresence>
-          {showCompletion && (
-            <motion.div
-              className="completion-overlay"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => {
-                setShowCompletion(false)
-                showCompletionRef.current = false
-                onComplete?.()
-              }}
-            >
-              <motion.div
-                className="completion-modal"
-                initial={{ scale: 0.92, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0.92, opacity: 0 }}
-                onClick={(e) => e.stopPropagation()}
-              >
-                <div className="completion-icon">
-                  <CheckCircle2 size={28} />
-                </div>
-                <h2>Support Complete</h2>
-                <p>The agent has updated your case. You can safely leave the counter.</p>
-                <div className="completion-meta">
-                  <div className="completion-meta-row">
-                    <span className="completion-meta-label">Case</span>
-                    <span className="completion-meta-value">{caseNumber || 'CASE45678'}</span>
-                  </div>
-                  <div className="completion-meta-row">
-                    <span className="completion-meta-label">Status</span>
-                    <span className="completion-meta-value">Refund Approved</span>
-                  </div>
-                  <div className="completion-meta-row">
-                    <span className="completion-meta-label">SMS</span>
-                    <span className="completion-meta-value">Confirmation sent</span>
-                  </div>
-                </div>
-                <div className="completion-actions">
-                  <button className="btn btn-primary" onClick={() => window.print?.()}>
-                    <Printer size={16} /> Print Receipt
-                  </button>
-                  <button className="btn btn-secondary" onClick={() => {
-                    setShowCompletion(false)
-                    onComplete?.()
-                  }}>
-                    Continue
-                  </button>
-                </div>
-              </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>
       </main>
     </div>
   )
