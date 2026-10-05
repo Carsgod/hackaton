@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Send, RotateCcw, Accessibility,
-  X, AlertTriangle, Smartphone, CheckCircle2, Globe, Printer, Settings,
+  X, AlertTriangle, Smartphone, Globe, Settings,
 } from 'lucide-react'
 import { useWebSocket } from '../hooks/useWebSocket'
 import { useAccessibility } from '../hooks/useAccessibility'
@@ -32,8 +32,8 @@ export default function TranscriptionPage({ sessionId, onBack, demoMode, onCompl
   const [lastError, setLastError] = useState(null)
   const [connectionRestored, setConnectionRestored] = useState(false)
   const [showOnboarding, setShowOnboarding] = useState(false)
-  const [showCompletion, setShowCompletion] = useState(false)
   const [showScrollTop, setShowScrollTop] = useState(false)
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [currentNodeId, setCurrentNodeId] = useState('root')
   const [waitingForCustomer, setWaitingForCustomer] = useState(false)
   const [suggestions, setSuggestions] = useState([])
@@ -120,12 +120,14 @@ export default function TranscriptionPage({ sessionId, onBack, demoMode, onCompl
     if (!demoMode) return
     const node = tree[nodeId]
     if (!node) {
+      if (showCompletionRef.current) return
       setIsPlaying(false)
       isPlayingRef.current = false
       setWaitingForCustomer(false)
       setSmsSent(true)
       setCaseNumber('CASE45678')
-      setShowCompletion(true)
+      showCompletionRef.current = true
+      onComplete?.()
       return
     }
 
@@ -144,12 +146,14 @@ export default function TranscriptionPage({ sessionId, onBack, demoMode, onCompl
 
     if (!node.options || node.options.length === 0) {
       setTimeout(() => {
+        if (showCompletionRef.current) return
         setIsPlaying(false)
         isPlayingRef.current = false
         setWaitingForCustomer(false)
         setSmsSent(true)
         setCaseNumber('CASE45678')
-        setShowCompletion(true)
+        showCompletionRef.current = true
+        onComplete?.()
       }, 1500 / speed)
     }
   }
@@ -191,7 +195,6 @@ export default function TranscriptionPage({ sessionId, onBack, demoMode, onCompl
       setWaitingForCustomer(false)
       setSuggestions([])
       setCustomerResponse('')
-      setShowCompletion(false)
       showCompletionRef.current = false
       showAgentNode('root')
     } else {
@@ -201,7 +204,6 @@ export default function TranscriptionPage({ sessionId, onBack, demoMode, onCompl
       setWaitingForCustomer(false)
       setSuggestions([])
       setCustomerResponse('')
-      setShowCompletion(false)
       showCompletionRef.current = false
       connect()
     }
@@ -308,7 +310,7 @@ export default function TranscriptionPage({ sessionId, onBack, demoMode, onCompl
         setConnectionStatus(data.status === 'ended' ? 'ended' : data.status)
         if (data.status === 'ended' && !showCompletionRef.current) {
           showCompletionRef.current = true
-          setShowCompletion(true)
+          onComplete?.()
         }
         break
       case 'sms':
@@ -316,7 +318,7 @@ export default function TranscriptionPage({ sessionId, onBack, demoMode, onCompl
         setCaseNumber(data.data?.case_number || '')
         if (!showCompletionRef.current) {
           showCompletionRef.current = true
-          setShowCompletion(true)
+          onComplete?.()
         }
         break
       case 'case_summary':
@@ -333,7 +335,7 @@ export default function TranscriptionPage({ sessionId, onBack, demoMode, onCompl
         }
         if (!showCompletionRef.current) {
           showCompletionRef.current = true
-          setShowCompletion(true)
+          onComplete?.()
         }
         break
       case 'ack':
@@ -509,7 +511,6 @@ export default function TranscriptionPage({ sessionId, onBack, demoMode, onCompl
       setCaseNumber('')
       setOfflineQueue([])
       setIsPlaying(false)
-      setShowCompletion(false)
       showCompletionRef.current = false
       isPlayingRef.current = false
     }
@@ -752,83 +753,214 @@ export default function TranscriptionPage({ sessionId, onBack, demoMode, onCompl
 
       <PinnedCards cards={smartCards} />
 
-      <main id="transcript-main" className="transcription-main" ref={transcriptsContainerRef}>
-        <div className="transcripts-container">
-          {!hasContent && (
-            <div className="transcription-waiting">
-              <div className="transcription-waiting-wave">
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
+      <div className="transcription-body">
+        <main id="transcript-main" className="transcription-main" ref={transcriptsContainerRef}>
+          <div className="transcripts-container">
+            {!hasContent && (
+              <div className="transcription-waiting">
+                <div className="transcription-waiting-wave">
+                  <span></span>
+                  <span></span>
+                  <span></span>
+                  <span></span>
+                  <span></span>
+                </div>
+                <p className="transcription-waiting-title">Waiting for transcription...</p>
+                <p className="transcription-waiting-subtitle">The agent's speech will appear here in real time.</p>
+                {demoMode && (
+                  <button className="btn btn-primary" style={{ marginTop: 16 }} onClick={startSession}>
+                    Start Demo Session
+                  </button>
+                )}
               </div>
-              <p className="transcription-waiting-title">Waiting for transcription...</p>
-              <p className="transcription-waiting-subtitle">The agent's speech will appear here in real time.</p>
-              {demoMode && (
-                <button className="btn btn-primary" style={{ marginTop: 16 }} onClick={startSession}>
-                  Start Demo Session
-                </button>
+            )}
+            <AnimatePresence>
+              {transcripts.map((transcript, index) => (
+                <motion.div
+                  key={transcript.timestamp || index}
+                  className={`transcript-bubble ${transcript.speaker} ${transcript.pending ? 'pending' : ''} ${transcript.is_local ? 'local' : ''}`}
+                  initial={{ opacity: 0, y: 10, scale: 0.98 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  transition={{ duration: 0.22 }}
+                >
+                  <div className="transcript-speaker">
+                    <span className={`speaker-dot ${transcript.speaker}`} />
+                    <span className="speaker-label">{transcript.speaker === 'agent' ? 'Agent' : 'You'}</span>
+                  </div>
+                  <div className="transcript-text-wrap">
+                    <p className="transcript-text" style={{ fontSize: currentFontSize, direction: 'ltr' }}>
+                      {transcript.text}
+                    </p>
+                    {!demoMode && transcript.translation_mode === 'dual' && transcript.original_text && (
+                      <p className="transcript-text transcript-text-secondary" style={{ fontSize: currentFontSize, direction: 'ltr' }}>
+                        {transcript.original_text}
+                      </p>
+                    )}
+                    {demoMode && dualLanguage && transcript.translation && (
+                      <p className="transcript-text transcript-text-secondary" style={{ fontSize: currentFontSize, direction: 'ltr' }}>
+                        {transcript.translation}
+                      </p>
+                    )}
+                  </div>
+                  <div className="transcript-actions">
+                    <button className="transcript-action-btn" onClick={() => speakText(transcript.text, transcript.timestamp)} aria-label="Read aloud">
+                      {speakingId === transcript.timestamp ? '🔊' : '🔈'}
+                    </button>
+                  </div>
+                  {transcript.is_local && <span className="local-badge">You</span>}
+                  {transcript.pending && <span className="pending-badge">Pending</span>}
+                </motion.div>
+              ))}
+            </AnimatePresence>
+            {showAgentTyping && (
+              <div className="typing-indicator" aria-live="polite">
+                <span className="typing-dot" />
+                <span className="typing-dot" />
+                <span className="typing-dot" />
+                <span className="typing-label">Agent is typing</span>
+              </div>
+            )}
+          </div>
+          {showScrollTop && (
+            <button
+              className="transcription-scroll-top"
+              onClick={scrollToTop}
+              aria-label="Scroll to top"
+            >
+              ↑
+            </button>
+          )}
+        </main>
+
+        <aside className={'customer-sidebar' + (sidebarCollapsed ? ' customer-sidebar-collapsed' : '')}>
+          <div className="customer-sidebar-header">
+            <h3>Case Summary</h3>
+            <button className="customer-sidebar-toggle" onClick={() => setSidebarCollapsed(prev => !prev)} aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}>
+              {sidebarCollapsed ? '›' : '‹'}
+            </button>
+          </div>
+          {!sidebarCollapsed && (
+            <div className="customer-case-summary">
+              {Object.keys(caseSummary).length === 0 && (
+                <div className="customer-summary-empty">Analyzing conversation...</div>
+              )}
+              {caseSummary.problem_label && (
+                <div className="customer-summary-chip">
+                  <span className="customer-summary-icon">🧩</span>
+                  <div className="customer-summary-content">
+                    <span className="customer-summary-label">Problem</span>
+                    <span className="customer-summary-value">{caseSummary.problem_label}</span>
+                  </div>
+                </div>
+              )}
+              {caseSummary.urgency && (
+                <div className="customer-summary-chip">
+                  <span className="customer-summary-icon">🚨</span>
+                  <div className="customer-summary-content">
+                    <span className="customer-summary-label">Urgency</span>
+                    <span className="customer-summary-value" style={{ textTransform: 'capitalize' }}>{caseSummary.urgency}</span>
+                  </div>
+                </div>
+              )}
+              {caseSummary.stage && (
+                <div className="customer-summary-chip">
+                  <span className="customer-summary-icon">🧭</span>
+                  <div className="customer-summary-content">
+                    <span className="customer-summary-label">Stage</span>
+                    <span className="customer-summary-value" style={{ textTransform: 'capitalize' }}>{caseSummary.stage.replace(/_/g, ' ')}</span>
+                  </div>
+                </div>
+              )}
+              {caseSummary.case_number && (
+                <div className="customer-summary-chip">
+                  <span className="customer-summary-icon">🎫</span>
+                  <div className="customer-summary-content">
+                    <span className="customer-summary-label">Case</span>
+                    <span className="customer-summary-value">{caseSummary.case_number}</span>
+                  </div>
+                </div>
+              )}
+              {caseSummary.phone && (
+                <div className="customer-summary-chip">
+                  <span className="customer-summary-icon">📱</span>
+                  <div className="customer-summary-content">
+                    <span className="customer-summary-label">Phone</span>
+                    <span className="customer-summary-value">{caseSummary.phone}</span>
+                  </div>
+                </div>
+              )}
+              {caseSummary.customer_name && (
+                <div className="customer-summary-chip">
+                  <span className="customer-summary-icon">👤</span>
+                  <div className="customer-summary-content">
+                    <span className="customer-summary-label">Name</span>
+                    <span className="customer-summary-value">{caseSummary.customer_name}</span>
+                  </div>
+                </div>
+              )}
+              {caseSummary.amount && (
+                <div className="customer-summary-chip">
+                  <span className="customer-summary-icon">💳</span>
+                  <div className="customer-summary-content">
+                    <span className="customer-summary-label">Amount</span>
+                    <span className="customer-summary-value">{caseSummary.amount}</span>
+                  </div>
+                </div>
+              )}
+              {caseSummary.reference && (
+                <div className="customer-summary-chip">
+                  <span className="customer-summary-icon">🔢</span>
+                  <div className="customer-summary-content">
+                    <span className="customer-summary-label">Reference</span>
+                    <span className="customer-summary-value">{caseSummary.reference}</span>
+                  </div>
+                </div>
+              )}
+              {caseSummary.status && (
+                <div className="customer-summary-chip">
+                  <span className="customer-summary-icon">
+                    {caseSummary.status === 'resolved' ? '✅' :
+                     caseSummary.status === 'escalated' ? '⬆️' :
+                     caseSummary.status === 'closed' || caseSummary.status === 'cancelled' ? '❌' :
+                     '🔄'}
+                  </span>
+                  <div className="customer-summary-content">
+                    <span className="customer-summary-label">Status</span>
+                    <span className="customer-summary-value" style={{ textTransform: 'capitalize' }}>{caseSummary.status.replace(/_/g, ' ')}</span>
+                  </div>
+                </div>
+              )}
+              {caseSummary.sms_sent && (
+                <div className="customer-summary-chip">
+                  <span className="customer-summary-icon">📨</span>
+                  <div className="customer-summary-content">
+                    <span className="customer-summary-label">SMS</span>
+                    <span className="customer-summary-value">Sent</span>
+                  </div>
+                </div>
+              )}
+              {caseSummary.resolution && (
+                <div className="customer-summary-chip">
+                  <span className="customer-summary-icon">🏁</span>
+                  <div className="customer-summary-content">
+                    <span className="customer-summary-label">Resolution</span>
+                    <span className="customer-summary-value">{caseSummary.resolution}</span>
+                  </div>
+                </div>
+              )}
+              {caseSummary.recommended_actions && caseSummary.recommended_actions.length > 0 && (
+                <div className="customer-summary-chip">
+                  <span className="customer-summary-icon">🎯</span>
+                  <div className="customer-summary-content">
+                    <span className="customer-summary-label">Next</span>
+                    <span className="customer-summary-value">{caseSummary.recommended_actions[0]}</span>
+                  </div>
+                </div>
               )}
             </div>
           )}
-          <AnimatePresence>
-            {transcripts.map((transcript, index) => (
-              <motion.div
-                key={transcript.timestamp || index}
-                className={`transcript-bubble ${transcript.speaker} ${transcript.pending ? 'pending' : ''} ${transcript.is_local ? 'local' : ''}`}
-                initial={{ opacity: 0, y: 10, scale: 0.98 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                transition={{ duration: 0.22 }}
-              >
-                <div className="transcript-speaker">
-                  <span className={`speaker-dot ${transcript.speaker}`} />
-                  <span className="speaker-label">{transcript.speaker === 'agent' ? 'Agent' : 'You'}</span>
-                </div>
-                <div className="transcript-text-wrap">
-                  <p className="transcript-text" style={{ fontSize: currentFontSize, direction: 'ltr' }}>
-                    {transcript.text}
-                  </p>
-                  {!demoMode && transcript.translation_mode === 'dual' && transcript.original_text && (
-                    <p className="transcript-text transcript-text-secondary" style={{ fontSize: currentFontSize, direction: 'ltr' }}>
-                      {transcript.original_text}
-                    </p>
-                  )}
-                  {demoMode && dualLanguage && transcript.translation && (
-                    <p className="transcript-text transcript-text-secondary" style={{ fontSize: currentFontSize, direction: 'ltr' }}>
-                      {transcript.translation}
-                    </p>
-                  )}
-                </div>
-                <div className="transcript-actions">
-                  <button className="transcript-action-btn" onClick={() => speakText(transcript.text, transcript.timestamp)} aria-label="Read aloud">
-                    {speakingId === transcript.timestamp ? '🔊' : '🔈'}
-                  </button>
-                </div>
-                {transcript.is_local && <span className="local-badge">You</span>}
-                {transcript.pending && <span className="pending-badge">Pending</span>}
-              </motion.div>
-            ))}
-          </AnimatePresence>
-          {showAgentTyping && (
-            <div className="typing-indicator" aria-live="polite">
-              <span className="typing-dot" />
-              <span className="typing-dot" />
-              <span className="typing-dot" />
-              <span className="typing-label">Agent is typing</span>
-            </div>
-          )}
-        </div>
-        {showScrollTop && (
-          <button
-            className="transcription-scroll-top"
-            onClick={scrollToTop}
-            aria-label="Scroll to top"
-          >
-            ↑
-          </button>
-        )}
-      </main>
+        </aside>
+      </div>
 
       {isWaitingForResponse && (
         <div className="response-bar">
@@ -937,62 +1069,6 @@ export default function TranscriptionPage({ sessionId, onBack, demoMode, onCompl
                 </div>
               </div>
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence>
-        {showCompletion && (
-          <motion.div
-            key="completion-overlay"
-            className="completion-overlay"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={() => {
-              setShowCompletion(false)
-              showCompletionRef.current = false
-              onComplete?.()
-            }}
-          >
-            <motion.div
-              className="completion-modal"
-              initial={{ scale: 0.92, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.92, opacity: 0 }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="completion-icon">
-                <CheckCircle2 size={28} />
-              </div>
-              <h2>Support Complete</h2>
-              <p>The agent has updated your case. You can safely leave the counter.</p>
-              <div className="completion-meta">
-                <div className="completion-meta-row">
-                  <span className="completion-meta-label">Case</span>
-                  <span className="completion-meta-value">{caseNumber || 'CASE45678'}</span>
-                </div>
-                <div className="completion-meta-row">
-                  <span className="completion-meta-label">Status</span>
-                  <span className="completion-meta-value">Refund Approved</span>
-                </div>
-                <div className="completion-meta-row">
-                  <span className="completion-meta-label">SMS</span>
-                  <span className="completion-meta-value">Confirmation sent</span>
-                </div>
-              </div>
-              <div className="completion-actions">
-                <button className="btn btn-primary" onClick={() => window.print?.()}>
-                  <Printer size={16} /> Print Receipt
-                </button>
-                <button className="btn btn-secondary" onClick={() => {
-                  setShowCompletion(false)
-                  onComplete?.()
-                }}>
-                  Continue
-                </button>
-              </div>
-            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
