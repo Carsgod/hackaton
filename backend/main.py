@@ -128,6 +128,11 @@ class ConnectionManager:
         else:
             if role == "customer":
                 self.sessions[session_id].language = language
+                if self.sessions[session_id].status in ("ended", "resolved", None):
+                    self.sessions[session_id].status = "active"
+                    self.sessions[session_id].transcripts = []
+                    self.sessions[session_id].cards = []
+                    self.sessions[session_id].case_summary = {}
             elif role == "agent":
                 self.sessions[session_id].agent_language = language
                 self.sessions[session_id].status = "active"
