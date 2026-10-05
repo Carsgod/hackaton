@@ -669,9 +669,8 @@ export default function TranscriptionPage({ sessionId, onBack, demoMode, onCompl
             <X size={20} />
           </button>
           <div className="session-info">
-            <h1 className="app-title">EchoText</h1>
+            <h1 className="app-title">Counter {sessionId}</h1>
             <div className="session-meta">
-              <span className="session-id">Session: {sessionId}</span>
               <div className="transcription-lang-toggle">
                 <button className={'lang-btn' + (language === 'en' ? ' active' : '')} onClick={() => setLanguage('en')}>EN</button>
                 <button className={'lang-btn' + (language === 'tw' ? ' active' : '')} onClick={() => setLanguage('tw')}>TW</button>
@@ -750,8 +749,6 @@ export default function TranscriptionPage({ sessionId, onBack, demoMode, onCompl
           <span>{offlineQueue.length} message{offlineQueue.length === 1 ? '' : 's'} pending sync</span>
         </div>
       )}
-
-      <PinnedCards cards={smartCards} />
 
       <div className="transcription-body">
         <main id="transcript-main" className="transcription-main" ref={transcriptsContainerRef}>
@@ -834,129 +831,14 @@ export default function TranscriptionPage({ sessionId, onBack, demoMode, onCompl
 
         <aside className={'customer-sidebar' + (sidebarCollapsed ? ' customer-sidebar-collapsed' : '')}>
           <div className="customer-sidebar-header">
-            <h3>Case Summary</h3>
+            <h3>Pinned Cards</h3>
             <button className="customer-sidebar-toggle" onClick={() => setSidebarCollapsed(prev => !prev)} aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}>
               {sidebarCollapsed ? '›' : '‹'}
             </button>
           </div>
           {!sidebarCollapsed && (
-            <div className="customer-case-summary">
-              {Object.keys(caseSummary).length === 0 && (
-                <div className="customer-summary-empty">Analyzing conversation...</div>
-              )}
-              {caseSummary.problem_label && (
-                <div className="customer-summary-chip">
-                  <span className="customer-summary-icon">🧩</span>
-                  <div className="customer-summary-content">
-                    <span className="customer-summary-label">Problem</span>
-                    <span className="customer-summary-value">{caseSummary.problem_label}</span>
-                  </div>
-                </div>
-              )}
-              {caseSummary.urgency && (
-                <div className="customer-summary-chip">
-                  <span className="customer-summary-icon">🚨</span>
-                  <div className="customer-summary-content">
-                    <span className="customer-summary-label">Urgency</span>
-                    <span className="customer-summary-value" style={{ textTransform: 'capitalize' }}>{caseSummary.urgency}</span>
-                  </div>
-                </div>
-              )}
-              {caseSummary.stage && (
-                <div className="customer-summary-chip">
-                  <span className="customer-summary-icon">🧭</span>
-                  <div className="customer-summary-content">
-                    <span className="customer-summary-label">Stage</span>
-                    <span className="customer-summary-value" style={{ textTransform: 'capitalize' }}>{caseSummary.stage.replace(/_/g, ' ')}</span>
-                  </div>
-                </div>
-              )}
-              {caseSummary.case_number && (
-                <div className="customer-summary-chip">
-                  <span className="customer-summary-icon">🎫</span>
-                  <div className="customer-summary-content">
-                    <span className="customer-summary-label">Case</span>
-                    <span className="customer-summary-value">{caseSummary.case_number}</span>
-                  </div>
-                </div>
-              )}
-              {caseSummary.phone && (
-                <div className="customer-summary-chip">
-                  <span className="customer-summary-icon">📱</span>
-                  <div className="customer-summary-content">
-                    <span className="customer-summary-label">Phone</span>
-                    <span className="customer-summary-value">{caseSummary.phone}</span>
-                  </div>
-                </div>
-              )}
-              {caseSummary.customer_name && (
-                <div className="customer-summary-chip">
-                  <span className="customer-summary-icon">👤</span>
-                  <div className="customer-summary-content">
-                    <span className="customer-summary-label">Name</span>
-                    <span className="customer-summary-value">{caseSummary.customer_name}</span>
-                  </div>
-                </div>
-              )}
-              {caseSummary.amount && (
-                <div className="customer-summary-chip">
-                  <span className="customer-summary-icon">💳</span>
-                  <div className="customer-summary-content">
-                    <span className="customer-summary-label">Amount</span>
-                    <span className="customer-summary-value">{caseSummary.amount}</span>
-                  </div>
-                </div>
-              )}
-              {caseSummary.reference && (
-                <div className="customer-summary-chip">
-                  <span className="customer-summary-icon">🔢</span>
-                  <div className="customer-summary-content">
-                    <span className="customer-summary-label">Reference</span>
-                    <span className="customer-summary-value">{caseSummary.reference}</span>
-                  </div>
-                </div>
-              )}
-              {caseSummary.status && (
-                <div className="customer-summary-chip">
-                  <span className="customer-summary-icon">
-                    {caseSummary.status === 'resolved' ? '✅' :
-                     caseSummary.status === 'escalated' ? '⬆️' :
-                     caseSummary.status === 'closed' || caseSummary.status === 'cancelled' ? '❌' :
-                     '🔄'}
-                  </span>
-                  <div className="customer-summary-content">
-                    <span className="customer-summary-label">Status</span>
-                    <span className="customer-summary-value" style={{ textTransform: 'capitalize' }}>{caseSummary.status.replace(/_/g, ' ')}</span>
-                  </div>
-                </div>
-              )}
-              {caseSummary.sms_sent && (
-                <div className="customer-summary-chip">
-                  <span className="customer-summary-icon">📨</span>
-                  <div className="customer-summary-content">
-                    <span className="customer-summary-label">SMS</span>
-                    <span className="customer-summary-value">Sent</span>
-                  </div>
-                </div>
-              )}
-              {caseSummary.resolution && (
-                <div className="customer-summary-chip">
-                  <span className="customer-summary-icon">🏁</span>
-                  <div className="customer-summary-content">
-                    <span className="customer-summary-label">Resolution</span>
-                    <span className="customer-summary-value">{caseSummary.resolution}</span>
-                  </div>
-                </div>
-              )}
-              {caseSummary.recommended_actions && caseSummary.recommended_actions.length > 0 && (
-                <div className="customer-summary-chip">
-                  <span className="customer-summary-icon">🎯</span>
-                  <div className="customer-summary-content">
-                    <span className="customer-summary-label">Next</span>
-                    <span className="customer-summary-value">{caseSummary.recommended_actions[0]}</span>
-                  </div>
-                </div>
-              )}
+            <div className="customer-pinned-cards">
+              <PinnedCards cards={smartCards} />
             </div>
           )}
         </aside>
