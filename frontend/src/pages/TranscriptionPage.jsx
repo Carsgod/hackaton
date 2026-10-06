@@ -750,6 +750,10 @@ export default function TranscriptionPage({ sessionId, onBack, demoMode, onCompl
         </div>
       )}
 
+      <div className="transcription-mobile-pinned-cards">
+        <PinnedCards cards={smartCards} />
+      </div>
+
       <div className="transcription-body">
         <main id="transcript-main" className="transcription-main" ref={transcriptsContainerRef}>
           <div className="transcripts-container">

@@ -1560,6 +1560,34 @@
   border-style: dashed;
 }
 
+/* Mobile pinned cards */
+.transcription-mobile-pinned-cards {
+  display: block;
+}
+
+.transcription-mobile-pinned-cards .pinned-cards-container {
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
+  padding: 10px 12px;
+}
+
+.transcription-mobile-pinned-cards .pinned-cards-scroll {
+  flex-direction: row;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.transcription-mobile-pinned-cards .pinned-card {
+  width: auto;
+  min-width: 0;
+}
+
+@media (min-width: 1024px) {
+  .transcription-mobile-pinned-cards {
+    display: none;
+  }
+}
+
 /* Transcription main */
 .transcription-main {
   flex: 1;

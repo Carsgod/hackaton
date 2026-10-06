@@ -1101,12 +1101,15 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
                         forward_text = agent_facing_text if other_role == "agent" else customer_facing_text
                         nlp_cards = []
                         if session and text.strip():
-                            nlp_result = manager.nlp.process(text.strip(), speaker)
-                            if nlp_result.get("cards"):
-                                for card in nlp_result["cards"]:
-                                    if card.get("value") not in [c.get("value") for c in session.cards]:
-                                        session.cards.append(card)
-                                nlp_cards = nlp_result["cards"]
+                            try:
+                                nlp_result = manager.nlp.process(text.strip(), speaker)
+                                if nlp_result.get("cards"):
+                                    for card in nlp_result["cards"]:
+                                        if card.get("value") not in [c.get("value") for c in session.cards]:
+                                            session.cards.append(card)
+                                    nlp_cards = nlp_result["cards"]
+                            except Exception as exc:
+                                logger.exception("[ws] nlp failed session=%s role=%s: %s", session_id, role, exc)
                         transcript_message = {
                             "type": "transcript",
                             "text": forward_text,
@@ -1120,10 +1123,13 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
                         logger.info("[ws] forwarding transcript session=%s role=%s -> %s text=%r", session_id, role, other_role, forward_text)
                         agent_suggestions = []
                         customer_suggestions = []
-                        if role == "customer" and other_role == "agent":
-                            agent_suggestions = _apply_language_mix(_match_suggestions(agent_facing_text, role="agent"), agent_language, translation_mode)
-                        elif role == "agent" and other_role == "customer":
-                            customer_suggestions = _apply_language_mix(_match_suggestions(customer_facing_text, role="customer"), customer_language, translation_mode)
+                        try:
+                            if role == "customer" and other_role == "agent":
+                                agent_suggestions = _apply_language_mix(_match_suggestions(agent_facing_text, role="agent"), agent_language, translation_mode)
+                            elif role == "agent" and other_role == "customer":
+                                customer_suggestions = _apply_language_mix(_match_suggestions(customer_facing_text, role="customer"), customer_language, translation_mode)
+                        except Exception as exc:
+                            logger.exception("[ws] suggestions failed session=%s role=%s: %s", session_id, role, exc)
                         forward_payload = {
                             "type": "transcript",
                             "text": forward_text,
@@ -1153,7 +1159,11 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
                         })
                         if session is not None:
                             session.transcripts.append(transcript_message)
-                            session.case_summary = manager._compute_case_summary(session)
+                            try:
+                                session.case_summary = manager._compute_case_summary(session)
+                            except Exception as exc:
+                                logger.exception("[ws] case summary failed session=%s: %s", session_id, exc)
+                                session.case_summary = {}
                             manager.record_metric(session_id, "turns")
                             if role == "agent":
                                 manager.record_metric(session_id, "agent_turns")
@@ -1217,7 +1227,11 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
                         await manager.send_json(session_id, {"type": "status", "status": "resumed"})
                     elif msg_type == "escalate":
                         if session:
-                            session.case_summary = manager._compute_case_summary(session)
+                            try:
+                                session.case_summary = manager._compute_case_summary(session)
+                            except Exception as exc:
+                                logger.exception("[ws] escalate case summary failed session=%s: %s", session_id, exc)
+                                session.case_summary = {}
                             if "escalate" not in session.case_summary.get("actions", []):
                                 session.case_summary.setdefault("actions", []).append("escalate")
                             session.case_summary["status"] = "escalated"
@@ -1237,7 +1251,11 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
                         if session:
                             session.case_number = case_number
                             session.sms_sent = True
-                            session.case_summary = manager._compute_case_summary(session)
+                            try:
+                                session.case_summary = manager._compute_case_summary(session)
+                            except Exception as exc:
+                                logger.exception("[ws] sms case summary failed session=%s: %s", session_id, exc)
+                                session.case_summary = {}
                             await manager.send_to_role(session_id, "agent", {
                                 "type": "case_summary",
                                 "case_summary": session.case_summary,
@@ -1254,6 +1272,8 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
                     pass
         except WebSocketDisconnect:
             pass
+        except Exception as exc:
+            logger.exception("[ws] session=%s role=%s unexpected error: %s", session_id, role, exc)
     finally:
         manager.disconnect(session_id, role)
         if role == "customer":

@@ -52,8 +52,8 @@ export function useWebSocket(url, onMessage, onConnect, onDisconnect) {
         setError('Connection error')
       }
 
-      ws.onclose = () => {
-        console.info('[ws] close', urlRef.current)
+      ws.onclose = (event) => {
+        console.info('[ws] close', urlRef.current, 'code=', event.code, 'reason=', event.reason)
         setIsConnected(false)
         onDisconnectRef.current?.()
         if (intentionalCloseRef.current) {
