@@ -3,10 +3,11 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   User, Users, CheckCircle2, AlertTriangle,
   ArrowLeft, Search, Settings, HelpCircle, MessageSquare, Smartphone, Send, RotateCcw, Mic, X,
-  Activity, PanelLeftClose, Menu, Copy, Clock, Loader2, XCircle, Info,
+  Activity, PanelLeftClose, Menu, Copy, Clock, Loader2, XCircle, Info, Accessibility,
 } from 'lucide-react'
 import { useWebSocket } from '../hooks/useWebSocket'
 import { useAccessibility } from '../hooks/useAccessibility'
+import AccessibilityControls from '../components/AccessibilityControls'
 import { extractCards, DEMO_TREE_EN, DEMO_TREE_TWI } from '../data/conversationTree'
 
 const AUTO_CUSTOMER_RESPONSES = [
@@ -48,6 +49,7 @@ export default function AgentDashboard({ sessionId, demoMode, onBack, agentLogin
   const [showSignIn, setShowSignIn] = useState(false)
   const [agentName, setAgentName] = useState('')
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const [showA11y, setShowA11y] = useState(false)
   const [agentId, setAgentId] = useState('')
   const [agentRole] = useState('Counter Support')
   const [signInName, setSignInName] = useState('')
@@ -935,6 +937,9 @@ export default function AgentDashboard({ sessionId, demoMode, onBack, agentLogin
             <button className="btn-icon" onClick={() => setShowHelp(true)} aria-label="Help">
               <HelpCircle size={20} />
             </button>
+            <button className="btn-icon" onClick={() => setShowA11y(prev => !prev)} aria-label="Accessibility settings">
+              <Accessibility size={20} />
+            </button>
             <button className="btn-icon" onClick={() => handleTabClick('settings')} aria-label="Settings">
               <Settings size={20} />
             </button>
@@ -1026,15 +1031,6 @@ export default function AgentDashboard({ sessionId, demoMode, onBack, agentLogin
                   <div className="agent-card-header">
                     <h2>Live Transcript</h2>
                     <div className="agent-badges">
-                      <span className="agent-badge-live">
-                        LIVE
-                        <span className="agent-live-wave">
-                          <span></span>
-                          <span></span>
-                          <span></span>
-                          <span></span>
-                        </span>
-                      </span>
                       <span className="agent-badge-lang">EN / TW</span>
                     </div>
                   </div>
@@ -1518,6 +1514,10 @@ export default function AgentDashboard({ sessionId, demoMode, onBack, agentLogin
                     <span className="agent-setting-value">{sessionId}</span>
                   </div>
                 </div>
+                <div className="agent-settings-a11y">
+                  <h3 className="agent-settings-subtitle">Accessibility</h3>
+                  <AccessibilityControls />
+                </div>
               </div>
             </div>
           )}
@@ -1575,6 +1575,20 @@ export default function AgentDashboard({ sessionId, demoMode, onBack, agentLogin
           </div>
         </div>
       )}
+
+      <AnimatePresence>
+        {showA11y && (
+          <motion.div
+            className="controls-panel"
+            initial={{ x: '100%' }}
+            animate={{ x: 0 }}
+            exit={{ x: '100%' }}
+            transition={{ type: 'spring', damping: 26, stiffness: 260 }}
+          >
+            <AccessibilityControls onClose={() => setShowA11y(false)} />
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <nav className="agent-mobile-bottom-nav" aria-label="Mobile navigation">
         <button className={'agent-mobile-nav-item' + (activeTab === 'transcript' ? ' active' : '')} onClick={() => handleTabClick('transcript')} aria-label="Transcript">

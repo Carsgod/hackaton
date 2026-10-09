@@ -1312,9 +1312,9 @@ async def asr_agent_speech(file: UploadFile = File(...), language: str = Form("e
         audio_bytes = await file.read()
         files = {"file": (file.filename, audio_bytes, file.content_type or "application/octet-stream")}
         normalized_language = "tw" if str(language).lower() in ("tw", "twi") else "en"
-        data = {"language": normalized_language}
         headers = {"Authorization": f"Bearer {token}"}
-        logger.info("[asr] request filename=%s content_type=%s frontend_language=%s api_language=%s", file.filename, file.content_type, language, normalized_language)
+        data = {}
+        logger.info("[asr] request filename=%s content_type=%s frontend_language=%s api_language=%s payload_keys=%s", file.filename, file.content_type, language, normalized_language, list(data.keys()))
         response = requests.post(api_url, files=files, headers=headers, data=data, timeout=60)
         if response.status_code == 422:
             logger.error("ASR 422 response: %s", response.text)

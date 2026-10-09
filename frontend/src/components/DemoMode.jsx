@@ -3,13 +3,13 @@ import { Play, Pause, RotateCcw, SkipForward, X, Volume2, CheckCircle2 } from 'l
 
 const DEMO_CONVERSATION = [
   { speaker: 'agent', text: 'Good afternoon, welcome to MTN service center. How can I help you today?', delay: 1800 },
-  { speaker: 'customer', text: 'I sent fifty Ghana cedis to my sister yesterday but she didn\'t receive it. My account was debited.', delay: 2800 },
+  { speaker: 'customer', text: 'I sent GHS 50.00 to my sister yesterday but she didn\'t receive it. My account was debited.', delay: 2800 },
   { speaker: 'agent', text: 'I\'m sorry to hear that. Let me check the transaction for you. Can you tell me the phone number you sent to?', delay: 2400 },
-  { speaker: 'customer', text: 'Yes, it was zero two four four five five six two two.', delay: 2200 },
-  { speaker: 'agent', text: 'Thank you. I can see the transaction. Reference number is REF88321. It shows fifty Ghana cedis was debited from your account on September twelfth at three forty five PM. The transaction is currently pending on the receiver side.', delay: 4200 },
-  { speaker: 'agent', text: 'I can initiate a reversal for you. The amount is GHS fifty point zero zero. Do you approve the refund?', delay: 2600 },
+  { speaker: 'customer', text: 'Yes, it was 0244556220.', delay: 2200 },
+  { speaker: 'agent', text: 'Thank you. I can see the transaction. Reference number is REF88321. It shows GHS 50.00 was debited from your account on September 12 at 3:45 PM. The transaction is currently pending on the receiver side.', delay: 4200 },
+  { speaker: 'agent', text: 'I can initiate a reversal for you. The amount is GHS 50.00. Do you approve the refund?', delay: 2600 },
   { speaker: 'customer', text: 'Yes please, approve the refund.', delay: 1800 },
-  { speaker: 'agent', text: 'I have approved the refund. Your money will be returned to your mobile money wallet within twenty-four hours. Your case number is CASE45678. An SMS confirmation has been sent to your phone number ending in nine zero.', delay: 4200 },
+  { speaker: 'agent', text: 'I have approved the refund. Your money will be returned to your mobile money wallet within 24 hours. Your case number is CASE45678. An SMS confirmation has been sent to your phone number ending in 90.', delay: 4200 },
   { speaker: 'customer', text: 'Thank you so much. I can read everything on my screen. This is very helpful.', delay: 2400 },
   { speaker: 'agent', text: 'You\'re welcome. If you have any other issues, please don\'t hesitate to visit us. Have a great day.', delay: 2400 },
 ]

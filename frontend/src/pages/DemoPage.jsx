@@ -331,7 +331,7 @@ export default function DemoPage({ onBack, onComplete }) {
             <div className="sms-phone-body">
               <div className="sms-phone-to">To: +233 XX XXX XXXX</div>
               <div className="sms-phone-message">
-                 EchoText Ghana: Your support case {caseNumber || 'CASE45678'} has been confirmed. Your refund of fifty Ghana cedis has been approved. Funds will arrive within twenty-four hours.
+                 EchoText Ghana: Your support case {caseNumber || 'CASE45678'} has been confirmed. Your refund of GHS 50.00 has been approved. Funds will arrive within 24 hours.
               </div>
               <div className="sms-phone-meta">Delivered via SMS Gateway</div>
             </div>

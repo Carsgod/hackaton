@@ -4002,6 +4002,33 @@
   overflow-y: auto;
 }
 
+.agent-settings-a11y {
+  margin-top: 20px;
+  border-top: 1px solid var(--border-color);
+  padding-top: 16px;
+}
+
+.agent-settings-subtitle {
+  font-size: 0.85rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-secondary);
+  margin: 0 0 12px;
+}
+
+.agent-settings-a11y .accessibility-controls {
+  padding: 0;
+}
+
+.agent-settings-a11y .controls-header {
+  display: none;
+}
+
+.agent-settings-a11y .controls-footer {
+  display: none;
+}
+
 .agent-card-title {
   font-size: 1rem;
   font-weight: 800;

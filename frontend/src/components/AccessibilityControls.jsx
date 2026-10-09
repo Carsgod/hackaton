@@ -14,7 +14,7 @@ export default function AccessibilityControls({ onClose }) {
     <div className="accessibility-controls">
       <div className="controls-header">
         <h3><A11yIcon size={18} color="var(--accent)" /> Accessibility</h3>
-        <button className="btn-icon" onClick={onClose} aria-label="Close controls"><X size={20} /></button>
+        {onClose && <button className="btn-icon" onClick={onClose} aria-label="Close controls"><X size={20} /></button>}
       </div>
 
       <div className="controls-section">

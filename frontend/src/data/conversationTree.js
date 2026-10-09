@@ -32,7 +32,7 @@ export const DEMO_TREE_EN = {
     ]
   },
   refund: {
-    agent: 'Thank you. I can see the transaction. Reference number is REF88321. It shows fifty Ghana cedis was debited from your account on September twelfth at three forty five PM. The transaction is currently pending on the receiver side.',
+    agent: 'Thank you. I can see the transaction. Reference number is REF88321. It shows GHS 50.00 was debited from your account on September 12 at 3:45 PM. The transaction is currently pending on the receiver side.',
     options: [
       { label: 'What should I do?', next: 'reverse' },
       { label: 'Will the money come back?', next: 'reverse' },
@@ -40,7 +40,7 @@ export const DEMO_TREE_EN = {
     ]
   },
   reverse: {
-    agent: 'I can initiate a reversal for you. The amount is fifty Ghana cedis. Do you approve the refund?',
+    agent: 'I can initiate a reversal for you. The amount is GHS 50.00. Do you approve the refund?',
     options: [
       { label: 'Yes, please reverse it', next: 'complete' },
       { label: 'I want a refund', next: 'complete' },
@@ -48,7 +48,7 @@ export const DEMO_TREE_EN = {
     ]
   },
   complete: {
-    agent: 'I have approved the refund. Your money will be returned to your mobile money wallet within twenty-four hours. Your case number is CASE45678. An SMS confirmation has been sent to your phone number ending in nine zero.',
+    agent: 'I have approved the refund. Your money will be returned to your mobile money wallet within 24 hours. Your case number is CASE45678. An SMS confirmation has been sent to your phone number ending in 90.',
     options: [
       { label: 'Thank you', next: 'end' },
       { label: 'Thank you so much', next: 'end' },
@@ -60,7 +60,7 @@ export const DEMO_TREE_EN = {
     options: []
   },
   balance: {
-    agent: 'I can see your recent transactions. There is a pending debit of fifty Ghana cedis that should reflect within a few hours.',
+    agent: 'I can see your recent transactions. There is a pending debit of GHS 50.00 that should reflect within a few hours.',
     options: [
       { label: 'Thank you', next: 'end' },
       { label: 'How long does it take?', next: 'pending_info' },
@@ -76,7 +76,7 @@ export const DEMO_TREE_EN = {
     ]
   },
   unauthorized: {
-    agent: 'I have flagged that charge for review. It may take twenty-four to forty-eight hours to investigate.',
+    agent: 'I have flagged that charge for review. It may take 24 to 48 hours to investigate.',
     options: [
       { label: 'Thank you', next: 'end' },
       { label: 'Will I get a refund?', next: 'refund_info' },
@@ -92,7 +92,7 @@ export const DEMO_TREE_EN = {
     ]
   },
   bank: {
-    agent: 'Bank deposits can take up to twenty-four hours to appear. Can you share the deposit reference?',
+    agent: 'Bank deposits can take up to 24 hours to appear. Can you share the deposit reference?',
     options: [
       { label: 'REF88321', next: 'refund' },
       { label: 'I don\'t have it', next: 'refund' },
@@ -102,20 +102,20 @@ export const DEMO_TREE_EN = {
   bill: {
     agent: 'Bill payments are usually instant. Can you confirm the amount and service provider?',
     options: [
-      { label: 'fifty Ghana cedis to ECG', next: 'refund' },
-      { label: 'one hundred Ghana cedis to GWCL', next: 'refund' },
+      { label: 'GHS 50.00 to ECG', next: 'refund' },
+      { label: 'GHS 100.00 to GWCL', next: 'refund' },
       { label: 'I don\'t remember', next: 'refund' }
     ]
   },
   pending_info: {
-    agent: 'Most pending debits clear within two to four hours. If it does not, please contact us again.',
+    agent: 'Most pending debits clear within 2 to 4 hours. If it does not, please contact us again.',
     options: [
       { label: 'Thank you', next: 'end' },
       { label: 'Okay, I will wait', next: 'end' }
     ]
   },
   cancel: {
-    agent: 'Cancellation depends on the merchant. I have escalated this and will update you within twenty-four hours.',
+    agent: 'Cancellation depends on the merchant. I have escalated this and will update you within 24 hours.',
     options: [
       { label: 'Thank you', next: 'end' },
       { label: 'How do I check the status?', next: 'status' }
@@ -188,9 +188,9 @@ export const DEMO_TREE_EN = {
     ]
   },
   billing_last_txn: {
-    agent: 'Thank you. For additional security, can you tell me the last three transactions on your account? This helps me verify your identity before accessing billing details.',
+    agent: 'Thank you. For additional security, can you tell me the last 3 transactions on your account? This helps me verify your identity before accessing billing details.',
     options: [
-      { label: 'Airtime top-up twenty Ghana cedis, Data bundle fifteen Ghana cedis, MoMo send fifty Ghana cedis', next: 'billing_type' },
+      { label: 'Airtime top-up GHS 20.00, Data bundle GHS 15.00, MoMo send GHS 50.00', next: 'billing_type' },
       { label: 'I don\'t remember exactly', next: 'billing_type' },
       { label: 'Can we skip this?', next: 'billing_type' }
     ]
@@ -204,7 +204,7 @@ export const DEMO_TREE_EN = {
     ]
   },
   billing_overcharge: {
-    agent: 'I can review your last three billing cycles. Is this about an overcharge on your airtime, data, or a specific subscription?',
+    agent: 'I can review your last 3 billing cycles. Is this about an overcharge on your airtime, data, or a specific subscription?',
     options: [
       { label: 'It\'s an airtime overcharge', next: 'billing_airtime' },
       { label: 'It\'s a data charge', next: 'billing_data' },
@@ -212,14 +212,14 @@ export const DEMO_TREE_EN = {
     ]
   },
   billing_airtime: {
-    agent: 'I can see a pending airtime adjustment of twenty Ghana cedis. I will initiate a direct reversal to your wallet. Your case number is BILL78901.',
+    agent: 'I can see a pending airtime adjustment of GHS 20.00. I will initiate a direct reversal to your wallet. Your case number is BILL78901.',
     options: [
       { label: 'Thank you', next: 'billing_case' },
       { label: 'How long will it take?', next: 'billing_timeline' }
     ]
   },
   billing_data: {
-    agent: 'Your last data charge appears to be from an automatic renewal. I will deactivate the auto-renewal and process a fifteen Ghana cedis data refund. Your case number is BILL78902.',
+    agent: 'Your last data charge appears to be from an automatic renewal. I will deactivate the auto-renewal and process a GHS 15.00 data refund. Your case number is BILL78902.',
     options: [
       { label: 'Thank you', next: 'billing_case' },
       { label: 'Will this happen again?', next: 'billing_prevent' }
@@ -242,7 +242,7 @@ export const DEMO_TREE_EN = {
     ]
   },
   billing_momo_verify: {
-    agent: 'Thank you. I have located the transaction in the MoMo database. The debit of fifty Ghana cedis is confirmed. Before I process the refund, I need to confirm: are you a prepaid or postpaid customer?',
+    agent: 'Thank you. I have located the transaction in the MoMo database. The debit of GHS 50.00 is confirmed. Before I process the refund, I need to confirm: are you a prepaid or postpaid customer?',
     options: [
       { label: 'Prepaid', next: 'billing_refund' },
       { label: 'Postpaid', next: 'billing_postpaid' }
@@ -256,21 +256,21 @@ export const DEMO_TREE_EN = {
     ]
   },
   billing_reverse: {
-    agent: 'I have initiated a reversal for the incorrect amount. The funds will return to your wallet within twenty-four hours. Your case number is BILL78903.',
+    agent: 'I have initiated a reversal for the incorrect amount. The funds will return to your wallet within 24 hours. Your case number is BILL78903.',
     options: [
       { label: 'Thank you', next: 'billing_case' },
       { label: 'How will I know?', next: 'billing_notification' }
     ]
   },
   billing_refund: {
-    agent: 'I have approved a refund of fifty Ghana cedis to your mobile money wallet. Your case number is BILL78904. An SMS confirmation has been sent to your phone.',
+    agent: 'I have approved a refund of GHS 50.00 to your mobile money wallet. Your case number is BILL78904. An SMS confirmation has been sent to your phone.',
     options: [
       { label: 'Thank you', next: 'billing_case' },
       { label: 'How do I check the status?', next: 'billing_status' }
     ]
   },
   billing_bonus: {
-    agent: 'The subscription has been deactivated. I have also added a five hundred megabytes goodwill data bonus to your account. Your case number is BILL78905.',
+    agent: 'The subscription has been deactivated. I have also added a 500 MB goodwill data bonus to your account. Your case number is BILL78905.',
     options: [
       { label: 'Thank you', next: 'billing_case' },
       { label: 'Will I be charged again?', next: 'billing_prevent' }
@@ -284,14 +284,14 @@ export const DEMO_TREE_EN = {
     ]
   },
   billing_escalate: {
-    agent: 'I can escalate this to our back-office finance team. They will contact you within twenty-four hours with a detailed resolution. Your escalation reference is ESC78910.',
+    agent: 'I can escalate this to our back-office finance team. They will contact you within 24 hours with a detailed resolution. Your escalation reference is ESC78910.',
     options: [
       { label: 'Thank you', next: 'end' },
       { label: 'Okay', next: 'end' }
     ]
   },
   billing_timeline: {
-    agent: 'Reversals usually take twenty-four to forty-eight hours to reflect. You will receive an SMS confirmation once it is complete.',
+    agent: 'Reversals usually take 24 to 48 hours to reflect. You will receive an SMS confirmation once it is complete.',
     options: [
       { label: 'Thank you', next: 'billing_case' }
     ]
@@ -350,7 +350,7 @@ export const DEMO_TREE_TWI = {
     ]
   },
   refund: {
-    agent: 'Medaase. Mɛ hu transaction no. Reference number yɛ REF88321. Ɛkyerɛ sɛ Ghana cedis ahahanu bɔɔ wo ka wɔ September twelfth, three forty five PM. Transaction no da so wɔ receiver nkyɛn.',
+    agent: 'Medaase. Mɛ hu transaction no. Reference number yɛ REF88321. Ɛkyerɛ sɛ GHS 50.00 bɔɔ wo ka wɔ September 12, 3:45 PM. Transaction no da so wɔ receiver nkyɛn.',
     options: [
       { label: 'Dɛn na menyɛ?', next: 'reverse' },
       { label: 'Sika no bɛsan aba?', next: 'reverse' },
@@ -358,7 +358,7 @@ export const DEMO_TREE_TWI = {
     ]
   },
   reverse: {
-    agent: 'Metumi asan nkɔma wo. Sika no yɛ fifty Ghana cedis. Wopɛ sɛ me ma refund?',
+    agent: 'Metumi asan nkɔma wo. Sika no yɛ GHS 50.00. Wopɛ sɛ me ma refund?',
     options: [
       { label: 'Aane, ma me refund', next: 'complete' },
       { label: 'Mepɛ refund', next: 'complete' },
@@ -366,7 +366,7 @@ export const DEMO_TREE_TWI = {
     ]
   },
   complete: {
-    agent: 'Mɛma refund no. Wo sika bɛsan aba wo mobile money wallet mu wɔ nnɔnhwerehahanu mu. Wo case number yɛ CASE45678. SMS confirmation no akɔ wo telefon number a ɛwɔ nine zero no.',
+    agent: 'Mɛma refund no. Wo sika bɛsan aba wo mobile money wallet mu wɔ 24 nnɔnhwere mu. Wo case number yɛ CASE45678. SMS confirmation no akɔ wo telefon number a ɛwɔ 90.',
     options: [
       { label: 'Medaase', next: 'end' },
       { label: 'Medaase pii', next: 'end' },
@@ -378,7 +378,7 @@ export const DEMO_TREE_TWI = {
     options: []
   },
   balance: {
-    agent: 'Metumi ahwɛ wo transaction a wɔayɛ nnɛ. Debit a ɛretwɛn yɛ fifty Ghana cedis na ɛbɛda so pɛn.',
+    agent: 'Metumi ahwɛ wo transaction a wɔayɛ nnɛ. Debit a ɛretwɛn yɛ GHS 50.00 na ɛbɛda so pɛn.',
     options: [
       { label: 'Medaase', next: 'end' },
       { label: 'Ɛbɛtwa ahe?', next: 'pending_info' },
@@ -394,7 +394,7 @@ export const DEMO_TREE_TWI = {
     ]
   },
   unauthorized: {
-    agent: 'Mɛma charge no ahwɛ. Ɛbɛtwa nnɔnhwerehahanu kosi nnɔnhwere aduonum-nwɔtwe.',
+    agent: 'Mɛma charge no ahwɛ. Ɛbɛtwa 24 kosi 48 nnɔnhwere.',
     options: [
       { label: 'Medaase', next: 'end' },
       { label: 'Sika no bɛsan aba?', next: 'refund_info' },
@@ -410,7 +410,7 @@ export const DEMO_TREE_TWI = {
     ]
   },
   bank: {
-    agent: 'Bank deposits no bɛtwa nnɔnhwerehahanu. Bɛtumi ka deposit reference no?',
+    agent: 'Bank deposits no bɛtwa 24 nnɔnhwere. Bɛtumi ka deposit reference no?',
     options: [
       { label: 'REF88321', next: 'refund' },
       { label: 'Minim no', next: 'refund' },
@@ -420,20 +420,20 @@ export const DEMO_TREE_TWI = {
   bill: {
     agent: 'Bill payments no yɛ ntɛmntɛm. Bɛtumi ka amount ne service provider no?',
     options: [
-      { label: 'fifty Ghana cedis kɔ ECG', next: 'refund' },
-      { label: 'one hundred Ghana cedis kɔ GWCL', next: 'refund' },
+      { label: 'GHS 50.00 kɔ ECG', next: 'refund' },
+      { label: 'GHS 100.00 kɔ GWCL', next: 'refund' },
       { label: 'Minim no', next: 'refund' }
     ]
   },
   pending_info: {
-    agent: 'Pending debits no bɛtwa nnɔnhwere mmienu kosi nnɔnhwere ɛnan. Sɛ ɛnyɛ saa a, frɛ yɛn bio.',
+    agent: 'Pending debits no bɛtwa nnɔnhwere 2 kosi nnɔnhwere 4. Sɛ ɛnyɛ saa a, frɛ yɛn bio.',
     options: [
       { label: 'Medaase', next: 'end' },
       { label: 'Yoo, mɛtwɛn', next: 'end' }
     ]
   },
   cancel: {
-    agent: 'Ɔkɔmfo no tumi atwa. Mɛma ɛyɛ ɔhaw no na ɛbɛba wo nkyɛn wɔ nnɔnhwerehahanu mu.',
+    agent: 'Ɔkɔmfo no tumi atwa. Mɛma ɛyɛ ɔhaw no na ɛbɛba wo nkyɛn wɔ 24 nnɔnhwere mu.',
     options: [
       { label: 'Medaase', next: 'end' },
       { label: 'Ɔkwan bɛn so na mɛhwɛ?', next: 'status' }
@@ -506,9 +506,9 @@ export const DEMO_TREE_TWI = {
     ]
   },
   billing_last_txn: {
-    agent: 'Medaase. Sɛ ɛhɔ na ɛsɛ sɛ me hwɛ wo last three transactions. Bɛtumi ka wo nnɛɛnnɛɛ transactions a wɔayɛ?',
+    agent: 'Medaase. Sɛ ɛhɔ na ɛsɛ sɛ me hwɛ wo last 3 transactions. Bɛtumi ka wo nnɛɛnnɛɛ transactions a wɔayɛ?',
     options: [
-      { label: 'Airtime top-up twenty Ghana cedis, Data bundle fifteen Ghana cedis, MoMo send fifty Ghana cedis', next: 'billing_type' },
+      { label: 'Airtime top-up GHS 20.00, Data bundle GHS 15.00, MoMo send GHS 50.00', next: 'billing_type' },
       { label: 'Minim no pasaa', next: 'billing_type' },
       { label: 'Yɛn nkɔ so', next: 'billing_type' }
     ]
@@ -530,14 +530,14 @@ export const DEMO_TREE_TWI = {
     ]
   },
   billing_airtime: {
-    agent: 'Mɛhu airtime adjustment a ɛretwɛn yɛ twenty Ghana cedis. Mɛma reversal no kɔ wo wallet. Wo case number yɛ BILL78901.',
+    agent: 'Mɛhu airtime adjustment a ɛretwɛn yɛ GHS 20.00. Mɛma reversal no kɔ wo wallet. Wo case number yɛ BILL78901.',
     options: [
       { label: 'Medaase', next: 'billing_case' },
       { label: 'Ɛbɛtwa ahe?', next: 'billing_timeline' }
     ]
   },
   billing_data: {
-    agent: 'Wo data charge no yɛ automatic renewal. Mɛtwa auto-renewal no na mɛma fifteen Ghana cedis refund. Wo case number yɛ BILL78902.',
+    agent: 'Wo data charge no yɛ automatic renewal. Mɛtwa auto-renewal no na mɛma GHS 15.00 refund. Wo case number yɛ BILL78902.',
     options: [
       { label: 'Medaase', next: 'billing_case' },
       { label: 'Ɛbɛba bio?', next: 'billing_prevent' }
@@ -560,7 +560,7 @@ export const DEMO_TREE_TWI = {
     ]
   },
   billing_momo_verify: {
-    agent: 'Medaase. Mɛhu transaction no wɔ MoMo database. Debit a ɛyɛ fifty Ghana cedis ayɛ nokware. Before I process refund no, bɛtumi ka wo account type—prepaid anaa postpaid?',
+    agent: 'Medaase. Mɛhu transaction no wɔ MoMo database. Debit a ɛyɛ GHS 50.00 ayɛ nokware. Before I process refund no, bɛtumi ka wo account type—prepaid anaa postpaid?',
     options: [
       { label: 'Prepaid', next: 'billing_refund' },
       { label: 'Postpaid', next: 'billing_postpaid' }
@@ -574,21 +574,21 @@ export const DEMO_TREE_TWI = {
     ]
   },
   billing_reverse: {
-    agent: 'Mɛma reversal no. Sika no bɛsan aba wo wallet wɔ nnɔnhwerehahanu mu. Wo case number yɛ BILL78903.',
+    agent: 'Mɛma reversal no. Sika no bɛsan aba wo wallet wɔ 24 nnɔnhwere mu. Wo case number yɛ BILL78903.',
     options: [
       { label: 'Medaase', next: 'billing_case' },
       { label: 'Ɛbɛtwa ahe?', next: 'billing_notification' }
     ]
   },
   billing_refund: {
-    agent: 'Mɛma fifty Ghana cedis refund kɔ wo mobile money wallet. Wo case number yɛ BILL78904. SMS confirmation no akɔ wo telefon.',
+    agent: 'Mɛma GHS 50.00 refund kɔ wo mobile money wallet. Wo case number yɛ BILL78904. SMS confirmation no akɔ wo telefon.',
     options: [
       { label: 'Medaase', next: 'billing_case' },
       { label: 'Ɔkwan bɛn so na mɛhwɛ?', next: 'billing_status' }
     ]
   },
   billing_bonus: {
-    agent: 'Mɛtwa subscription no na matɔ five hundred megabytes goodwill data bonus kɔ wo account. Wo case number yɛ BILL78905.',
+    agent: 'Mɛtwa subscription no na matɔ 500 MB goodwill data bonus kɔ wo account. Wo case number yɛ BILL78905.',
     options: [
       { label: 'Medaase', next: 'billing_case' },
       { label: 'Wɔbɛbɔ me bio?', next: 'billing_prevent' }
@@ -602,14 +602,14 @@ export const DEMO_TREE_TWI = {
     ]
   },
   billing_escalate: {
-    agent: 'Mɛma no kɔ back-office finance team no. Wɔbɛfrɛ wo wɔ nnɔnhwerehahanu mu. Wo escalation reference yɛ ESC78910.',
+    agent: 'Mɛma no kɔ back-office finance team no. Wɔbɛfrɛ wo wɔ 24 nnɔnhwere mu. Wo escalation reference yɛ ESC78910.',
     options: [
       { label: 'Medaase', next: 'end' },
       { label: 'Yoo', next: 'end' }
     ]
   },
   billing_timeline: {
-    agent: 'Reversals no bɛtwa nnɔnhwerehahanu kosi nnɔnhwere aduonum-nwɔtwe. Wo bɛnya SMS sɛ ɛba.',
+    agent: 'Reversals no bɛtwa 24 kosi 48 nnɔnhwere. Wo bɛnya SMS sɛ ɛba.',
     options: [
       { label: 'Medaase', next: 'billing_case' }
     ]
