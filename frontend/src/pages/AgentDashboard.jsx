@@ -464,6 +464,7 @@ export default function AgentDashboard({ sessionId, demoMode, onBack, agentLogin
           let result
           let remoteFailed = false
           try {
+            setAsrStatus('transcribing')
             result = await retryAsr(wavBlob, filename)
           } catch (wavError) {
             remoteFailed = true
@@ -471,6 +472,7 @@ export default function AgentDashboard({ sessionId, demoMode, onBack, agentLogin
             setAsrError(wavError.message || 'WAV upload failed, retrying original audio...')
             const originalFilename = `agent-audio-${Date.now()}.${mimeType.includes('ogg') ? 'ogg' : 'webm'}`
             try {
+              setAsrStatus('transcribing')
               result = await uploadOriginalBlob(audioBlob, originalFilename)
               remoteFailed = false
             } catch (originalError) {
@@ -696,14 +698,12 @@ export default function AgentDashboard({ sessionId, demoMode, onBack, agentLogin
 
   useEffect(() => {
     if (!ready) return
-    setTranscripts([])
-    setCards([])
     setSmsSent(false)
     setCaseNumber('')
     setAgentInput('')
     setPendingVoiceMessage('')
     setAsrError('')
-  }, [language, ready])
+  }, [ready])
 
   useEffect(() => {
     return () => {
@@ -1379,6 +1379,7 @@ export default function AgentDashboard({ sessionId, demoMode, onBack, agentLogin
                   title={
                     asrStatus === 'recording' ? 'Recording... click to stop' :
                     asrStatus === 'uploading' ? 'Uploading audio...' :
+                    asrStatus === 'transcribing' ? 'Transcribing audio...' :
                     'Start voice input'
                   }
                 >
