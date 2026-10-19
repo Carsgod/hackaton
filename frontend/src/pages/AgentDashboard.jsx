@@ -55,6 +55,7 @@ export default function AgentDashboard({ sessionId, demoMode, onBack, agentLogin
   const [reconnectCount, setReconnectCount] = useState(0)
   const [sessionStartTime, setSessionStartTime] = useState(null)
   const [toasts, setToasts] = useState([])
+  const toastIdRef = useRef(0)
   const [showEndConfirm, setShowEndConfirm] = useState(false)
   const [signInName, setSignInName] = useState('')
   const [signInId, setSignInId] = useState('')
@@ -162,7 +163,9 @@ export default function AgentDashboard({ sessionId, demoMode, onBack, agentLogin
   }
 
   const addToast = (message, type = 'info') => {
-    const id = Date.now()
+    if (toasts.some(t => t.message === message && t.type === type)) return
+    toastIdRef.current += 1
+    const id = toastIdRef.current
     setToasts(prev => [...prev, { id, message, type }])
     setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 5000)
   }
@@ -478,7 +481,6 @@ export default function AgentDashboard({ sessionId, demoMode, onBack, agentLogin
           } catch (wavError) {
             remoteFailed = true
             console.warn('[asr] wav upload failed, falling back to original blob', wavError)
-            addToast(wavError.message || 'WAV upload failed, retrying original audio...', 'error')
             const originalFilename = `agent-audio-${Date.now()}.${mimeType.includes('ogg') ? 'ogg' : 'webm'}`
             try {
               setAsrStatus('transcribing')
@@ -486,7 +488,6 @@ export default function AgentDashboard({ sessionId, demoMode, onBack, agentLogin
               remoteFailed = false
             } catch (originalError) {
               console.warn('[asr] original blob upload failed, using local recognition if available', originalError)
-              addToast(originalError.message || 'Remote ASR failed. Using local recognition if available...', 'error')
             }
           }
           if (remoteFailed || !(result?.transcript?.trim())) {
