@@ -39,7 +39,7 @@ except ImportError:
 
 app = FastAPI(title="EchoText Ghana API", version="1.0.0")
 
-PUBLIC_BASE_URL = os.getenv("PUBLIC_BASE_URL", "https://echotext.gh").rstrip("/")
+PUBLIC_BASE_URL = os.getenv("PUBLIC_BASE_URL", "https://hackaton-4565.onrender.com").rstrip("/")
 CORS_ORIGINS = os.getenv("CORS_ORIGINS", "*").split(",")
 
 COUNTER_PIN_MAP = {
