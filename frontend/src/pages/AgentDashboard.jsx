@@ -52,14 +52,16 @@ export default function AgentDashboard({ sessionId, demoMode, onBack, agentLogin
   const [showA11y, setShowA11y] = useState(false)
   const [agentId, setAgentId] = useState('')
   const [agentRole] = useState('Counter Support')
+  const [reconnectCount, setReconnectCount] = useState(0)
+  const [sessionStartTime, setSessionStartTime] = useState(null)
+  const [toasts, setToasts] = useState([])
+  const [showEndConfirm, setShowEndConfirm] = useState(false)
   const [signInName, setSignInName] = useState('')
   const [signInId, setSignInId] = useState('')
   const [showHelp, setShowHelp] = useState(false)
   const [showSearch, setShowSearch] = useState(false)
   const [agentPin, setAgentPin] = useState('')
-  const [pinError, setPinError] = useState('')
   const [isPinSubmitting, setIsPinSubmitting] = useState(false)
-  const [asrError, setAsrError] = useState('')
   const [pendingVoiceMessage, setPendingVoiceMessage] = useState('')
   const [lastRecordingUrl, setLastRecordingUrl] = useState('')
   const [restoringConversation, setRestoringConversation] = useState(false)
@@ -153,9 +155,16 @@ export default function AgentDashboard({ sessionId, demoMode, onBack, agentLogin
     if (!text) return
     try {
       await navigator.clipboard.writeText(text)
+      addToast('Copied to clipboard', 'success')
     } catch {
       // clipboard API not available
     }
+  }
+
+  const addToast = (message, type = 'info') => {
+    const id = Date.now()
+    setToasts(prev => [...prev, { id, message, type }])
+    setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 5000)
   }
 
   const extractPhoneFromTranscripts = () => {
@@ -232,7 +241,6 @@ export default function AgentDashboard({ sessionId, demoMode, onBack, agentLogin
       setAgentInput('')
       setPendingVoiceMessage('')
       setLastRecordingUrl('')
-      setAsrError('')
       setAgentSuggestions([])
       simulateCustomerResponse()
     } else {
@@ -241,7 +249,6 @@ export default function AgentDashboard({ sessionId, demoMode, onBack, agentLogin
       setAgentInput('')
       setPendingVoiceMessage('')
       setLastRecordingUrl('')
-      setAsrError('')
       setAgentSuggestions([])
       console.info('[agent] send response', { text: trimmed, sessionId })
       send({ type: 'response', data: { text: trimmed, speaker: 'agent', timestamp: Date.now() } })
@@ -278,7 +285,6 @@ export default function AgentDashboard({ sessionId, demoMode, onBack, agentLogin
         break
       case 'connected':
         setConnectionStatus('connected')
-        setPinError('')
         console.info('[agent] set connectionStatus to connected')
         if (data.customer_language) {
           setCustomerLanguage(data.customer_language)
@@ -313,7 +319,7 @@ export default function AgentDashboard({ sessionId, demoMode, onBack, agentLogin
         }
         break
       case 'error':
-        setPinError(data.message || 'Connection error')
+        addToast(data.message || 'Connection error', 'error')
         break
       default:
         break
@@ -323,7 +329,6 @@ export default function AgentDashboard({ sessionId, demoMode, onBack, agentLogin
   const restoreConversation = async () => {
     if (!sessionId) return
     setRestoringConversation(true)
-    setPinError('')
     try {
       const baseUrl = getHttpBaseUrl()
       const response = await fetch(`${baseUrl}/api/session/${encodeURIComponent(sessionId)}/transcripts`)
@@ -364,7 +369,7 @@ export default function AgentDashboard({ sessionId, demoMode, onBack, agentLogin
       setConnectionStatus('connected')
     } catch (error) {
       console.error('[agent] restore conversation failed:', error)
-      setPinError(error.message || 'Failed to restore conversation')
+      addToast(error.message || 'Failed to restore conversation', 'error')
     } finally {
       setRestoringConversation(false)
     }
@@ -372,9 +377,14 @@ export default function AgentDashboard({ sessionId, demoMode, onBack, agentLogin
 
   const onConnect = useCallback(() => {
     setConnectionStatus('connected')
-    setPinError('')
-  }, [sessionId])
-  const onDisconnect = useCallback(() => setConnectionStatus('disconnected'), [])
+    if (!sessionStartTime) setSessionStartTime(Date.now())
+  }, [sessionId, sessionStartTime])
+  const onDisconnect = useCallback(() => {
+    if (connectionStatus === 'connected') {
+      setReconnectCount(prev => prev + 1)
+    }
+    setConnectionStatus('disconnected')
+  }, [connectionStatus])
 
   const audioBufferToWav = (buffer, targetSampleRate = 16000) => {
     const numChannels = 1
@@ -445,7 +455,6 @@ export default function AgentDashboard({ sessionId, demoMode, onBack, agentLogin
         stream.getTracks().forEach(track => track.stop())
         setIsRecording(false)
         setAsrStatus('uploading')
-        setAsrError('')
         try {
           const arrayBuffer = await audioBlob.arrayBuffer()
           console.info('[asr] arrayBuffer', { byteLength: arrayBuffer.byteLength })
@@ -469,7 +478,7 @@ export default function AgentDashboard({ sessionId, demoMode, onBack, agentLogin
           } catch (wavError) {
             remoteFailed = true
             console.warn('[asr] wav upload failed, falling back to original blob', wavError)
-            setAsrError(wavError.message || 'WAV upload failed, retrying original audio...')
+            addToast(wavError.message || 'WAV upload failed, retrying original audio...', 'error')
             const originalFilename = `agent-audio-${Date.now()}.${mimeType.includes('ogg') ? 'ogg' : 'webm'}`
             try {
               setAsrStatus('transcribing')
@@ -477,16 +486,15 @@ export default function AgentDashboard({ sessionId, demoMode, onBack, agentLogin
               remoteFailed = false
             } catch (originalError) {
               console.warn('[asr] original blob upload failed, using local recognition if available', originalError)
-              setAsrError(originalError.message || 'Remote ASR failed. Using local recognition if available...')
+              addToast(originalError.message || 'Remote ASR failed. Using local recognition if available...', 'error')
             }
           }
           if (remoteFailed || !(result?.transcript?.trim())) {
             const localTranscript = localTranscriptRef.current.trim()
             if (localTranscript) {
               result = { transcript: localTranscript, raw: result?.raw || {} }
-              setAsrError('')
             } else if (!result?.transcript?.trim()) {
-              setAsrError('No transcript was returned from speech recognition.')
+              addToast('No transcript was returned from speech recognition.', 'error')
             }
           }
           console.info('[asr] result', result)
@@ -495,7 +503,7 @@ export default function AgentDashboard({ sessionId, demoMode, onBack, agentLogin
         } catch (error) {
           console.error('[asr] upload failed:', error)
           setAsrStatus('idle')
-          setAsrError(error.message || 'Speech recognition failed. Please type your message.')
+          addToast(error.message || 'Speech recognition failed. Please type your message.', 'error')
         }
       }
       startLocalSpeechRecognitionInBackground()
@@ -506,7 +514,7 @@ export default function AgentDashboard({ sessionId, demoMode, onBack, agentLogin
 
       setIsRecording(false)
       setAsrStatus('idle')
-      setAsrError(error.message || 'Could not access microphone. Please check permissions.')
+      addToast(error.message || 'Could not access microphone. Please check permissions.', 'error')
     }
   }
 
@@ -522,7 +530,6 @@ export default function AgentDashboard({ sessionId, demoMode, onBack, agentLogin
   }
 
   const retryAsr = async (wavBlob, filename) => {
-    setAsrError('')
     const baseUrl = getHttpBaseUrl()
     const uploadUrl = `${baseUrl}/asr/agent-speech`
     const normalizedLanguage = language === 'tw' ? 'tw-GH' : 'en-GH'
@@ -615,13 +622,12 @@ export default function AgentDashboard({ sessionId, demoMode, onBack, agentLogin
   const applyTranscript = (transcript) => {
     const trimmed = (transcript || '').trim()
     setAsrStatus('idle')
-    setAsrError('')
     if (trimmed) {
       setPendingVoiceMessage(trimmed)
       setAgentInput(trimmed)
     } else {
       setPendingVoiceMessage('')
-      setAsrError('No transcript was returned from speech recognition.')
+      addToast('No transcript was returned from speech recognition.', 'error')
     }
   }
 
@@ -637,7 +643,6 @@ export default function AgentDashboard({ sessionId, demoMode, onBack, agentLogin
     setPendingVoiceMessage('')
     setLastRecordingUrl('')
     setAgentInput('')
-    setAsrError('')
   }
 
   const { isConnected, error, connect, disconnect, send } = useWebSocket(
@@ -692,6 +697,14 @@ export default function AgentDashboard({ sessionId, demoMode, onBack, agentLogin
   }, [])
 
   useEffect(() => {
+    if (connectionStatus !== 'connected' || !sessionStartTime) return
+    const t = setInterval(() => {
+      // no-op: keeps component re-rendering so session timer updates
+    }, 1000)
+    return () => clearInterval(t)
+  }, [connectionStatus, sessionStartTime])
+
+  useEffect(() => {
     const t = setTimeout(() => setReady(true), 50)
     return () => clearTimeout(t)
   }, [])
@@ -702,7 +715,6 @@ export default function AgentDashboard({ sessionId, demoMode, onBack, agentLogin
     setCaseNumber('')
     setAgentInput('')
     setPendingVoiceMessage('')
-    setAsrError('')
   }, [ready])
 
   useEffect(() => {
@@ -803,7 +815,13 @@ export default function AgentDashboard({ sessionId, demoMode, onBack, agentLogin
   }
 
   const endSession = () => {
+    setShowEndConfirm(true)
+  }
+
+  const confirmEndSession = () => {
+    setShowEndConfirm(false)
     send({ type: 'end' })
+    addToast('Session ended', 'info')
   }
 
   const handleSignIn = () => {
@@ -820,11 +838,10 @@ export default function AgentDashboard({ sessionId, demoMode, onBack, agentLogin
 
   const handlePinSubmit = () => {
     if (!agentPin.trim()) {
-      setPinError('Please enter your PIN')
+      addToast('Please enter your PIN', 'error')
       return
     }
     setIsPinSubmitting(true)
-    setPinError('')
   }
 
   const statusColor = connectionStatus === 'connected' ? '#10b981' : connectionStatus === 'connecting' ? '#f59e0b' : '#ef4444'
@@ -843,6 +860,27 @@ export default function AgentDashboard({ sessionId, demoMode, onBack, agentLogin
   return (
     <div className="agent-dashboard">
       <a href="#agent-main" className="skip-link">Skip to main content</a>
+
+      <div className="agent-toasts">
+        {toasts.map((toast) => (
+          <div
+            key={toast.id}
+            className={`agent-toast agent-toast-${toast.type}`}
+            style={{ animation: 'slideIn 0.3s ease-out' }}
+            role="alert"
+            aria-live="polite"
+          >
+            <span className="agent-toast-message">{toast.message}</span>
+            <button
+              className="agent-toast-close"
+              onClick={() => setToasts(prev => prev.filter(t => t.id !== toast.id))}
+              aria-label="Dismiss"
+            >
+              <X size={14} />
+            </button>
+          </div>
+        ))}
+      </div>
 
       <aside className={'agent-sidebar' + (sidebarCollapsed ? ' agent-sidebar-collapsed' : '')}>
         <div className="agent-sidebar-header">
@@ -908,9 +946,20 @@ export default function AgentDashboard({ sessionId, demoMode, onBack, agentLogin
                 <div className="agent-topbar-meta">
                   <span className="agent-status-dot" style={{ background: statusColor }} />
                   {statusLabel} • MTN Service Center • Customer: {customerLangLabel}
+                  {reconnectCount > 0 && (
+                    <span style={{ marginLeft: 8, color: '#f59e0b', fontSize: '0.7rem', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                      <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#f59e0b', animation: 'pulse 1.4s ease-in-out infinite' }} />
+                      Reconnected {reconnectCount}×
+                    </span>
+                  )}
                   {offlineQueue.length > 0 && (
                     <span style={{ marginLeft: 8, color: '#f59e0b', fontWeight: 700 }}>
                       {offlineQueue.length} pending
+                    </span>
+                  )}
+                  {sessionStartTime && (
+                    <span style={{ marginLeft: 8, color: '#6b7280', fontSize: '0.75rem', fontWeight: 600 }}>
+                      {Math.floor((Date.now() - sessionStartTime) / 60000)}m {Math.floor(((Date.now() - sessionStartTime) % 60000) / 1000)}s
                     </span>
                   )}
                 </div>
@@ -1058,10 +1107,17 @@ export default function AgentDashboard({ sessionId, demoMode, onBack, agentLogin
                           </div>
                         </motion.div>
                       )}
+                      {transcripts.length === 0 && (
+                        <div className="agent-empty-state">
+                          <div className="agent-empty-icon">💬</div>
+                          <h3 className="agent-empty-title">Start the conversation</h3>
+                          <p className="agent-empty-subtitle">Record a voice message or type to begin chatting with the customer.</p>
+                        </div>
+                      )}
                       {transcripts.map((transcript, index) => (
                         <motion.div
                           key={transcript.timestamp || index}
-                          className={'agent-chat-bubble ' + transcript.speaker}
+                          className={'agent-chat-bubble ' + transcript.speaker + (transcript.pending ? ' pending' : '')}
                           initial={{ opacity: 0, y: 10 }}
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ duration: 0.2 }}
@@ -1071,6 +1127,12 @@ export default function AgentDashboard({ sessionId, demoMode, onBack, agentLogin
                             {dualLanguage && transcript.translation && (
                               <p className="agent-chat-text agent-chat-text-secondary" style={{ fontSize: currentFontSize, direction: 'ltr' }}>{transcript.translation}</p>
                             )}
+                            <div className="agent-message-meta">
+                              <span className="agent-message-time">{new Date(transcript.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                              {transcript.speaker === 'agent' && !transcript.pending && (
+                                <span className="agent-message-status delivered">✓</span>
+                              )}
+                            </div>
                           </div>
                           <button className="agent-chat-tts" onClick={() => speakText(transcript.text, transcript.timestamp)} aria-label="Read aloud">
                             {speakingId === transcript.timestamp ? '🔊' : '🔈'}
@@ -1078,11 +1140,10 @@ export default function AgentDashboard({ sessionId, demoMode, onBack, agentLogin
                         </motion.div>
                       ))}
                       {showCustomerTyping && (
-                        <div className="typing-indicator" aria-live="polite">
+                        <div className="typing-indicator" role="status" aria-label="Customer typing">
                           <span className="typing-dot" />
                           <span className="typing-dot" />
                           <span className="typing-dot" />
-                          <span className="typing-label">Customer is typing</span>
                         </div>
                       )}
                     </AnimatePresence>
@@ -1384,7 +1445,17 @@ export default function AgentDashboard({ sessionId, demoMode, onBack, agentLogin
                   }
                 >
                   <Mic size={18} />
-                  {asrStatus !== 'idle' && <span className="agent-mic-status">{asrStatus}</span>}
+                  {isRecording && (
+                    <div className="agent-audio-viz">
+                      {[1, 2, 3, 4, 5].map((i) => (
+                        <span key={i} className="agent-audio-bar" style={{ animationDelay: `${i * 0.05}s` }} />
+                      ))}
+                    </div>
+                  )}
+                  {(asrStatus === 'uploading' || asrStatus === 'transcribing') && (
+                    <div className="agent-asr-spinner" />
+                  )}
+                  {asrStatus !== 'idle' && !isRecording && asrStatus !== 'uploading' && asrStatus !== 'transcribing' && <span className="agent-mic-status">{asrStatus}</span>}
                 </button>
                 <button className="btn btn-primary btn-sm" onClick={() => sendAgentMessage(agentInput)} disabled={!agentInput.trim()} aria-label="Send message">
                   <Send size={16} />
@@ -1411,7 +1482,7 @@ export default function AgentDashboard({ sessionId, demoMode, onBack, agentLogin
                       <Smartphone size={16} />
                       {smsSent ? 'SMS Sent' : 'Resolve & SMS'}
                     </button>
-                    <button className="btn btn-secondary btn-sm" onClick={endSession}>
+                    <button className="btn btn-secondary btn-sm" onClick={confirmEndSession}>
                       <X size={16} />
                       End Session
                     </button>
@@ -1609,6 +1680,19 @@ export default function AgentDashboard({ sessionId, demoMode, onBack, agentLogin
           <span>Settings</span>
         </button>
       </nav>
+
+      {showEndConfirm && (
+        <div className="modal-overlay" onClick={() => setShowEndConfirm(false)} role="dialog" aria-modal="true" aria-label="End session confirmation">
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <h2 className="agent-modal-title">End Session?</h2>
+            <p className="agent-modal-subtitle">Ending will generate a case summary and send an SMS confirmation to the customer. This cannot be undone.</p>
+            <div className="agent-modal-actions">
+              <button className="btn btn-secondary" onClick={() => setShowEndConfirm(false)}>Cancel</button>
+              <button className="btn btn-primary" onClick={confirmEndSession}>End Session</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
