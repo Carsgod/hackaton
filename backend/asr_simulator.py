@@ -19,7 +19,7 @@ DEMO_CONVERSATION = [
     {"speaker": "agent", "text": "Good afternoon. Welcome to the MTN Service Centre. How may I assist you today?", "delay": 0.8},
     {"speaker": "customer", "text": "I sent 50 Ghana cedis to my sister yesterday, but she has not received the money. My MoMo wallet was debited.", "delay": 1.2},
     {"speaker": "agent", "text": "I'm sorry about that. Let me check the transaction status for you. Could you please provide the phone number you sent the money to?", "delay": 1.0},
-    {"speaker": "customer", "text": "Yes. It was 0244656220.", "delay": 1.0},
+    {"speaker": "customer", "text": "Yes. It was 02446562200.", "delay": 1.0},
     {"speaker": "agent", "text": "Thank you. I have located the transaction. The transaction reference is REF88321. It shows that GHS 50.00 was debited from your MoMo wallet on September 12 at 3:45 PM. The transaction is currently pending on the receiver's side.", "delay": 1.5},
     {"speaker": "customer", "text": "What should I do? Will the money be returned to my wallet?", "delay": 0.9},
     {"speaker": "agent", "text": "I can submit a reversal request for the transaction. The amount is GHS 50.00. Would you like me to proceed with the reversal?", "delay": 1.2},
