@@ -6,6 +6,7 @@ import random
 import io
 import base64
 import logging
+import re
 import requests
 from typing import List, Dict, Optional, Any
 from datetime import datetime, timezone
@@ -15,6 +16,13 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Quer
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, FileResponse
 from pydantic import BaseModel, Field
+
+try:
+    from deep_translator import GoogleTranslator
+    HAS_GOOGLE_TRANSLATOR = True
+except Exception:
+    GoogleTranslator = None
+    HAS_GOOGLE_TRANSLATOR = False
 
 load_dotenv()
 
@@ -48,9 +56,39 @@ COUNTER_PIN_MAP = {
     "counter_3": "9012",
 }
 
+_COUNTER_NUMBER_RE = re.compile(r"(\d+)")
+
+
+def _normalize_counter_id(raw: str) -> str:
+    """Map every spelling of a counter to one canonical session id.
+
+    The agent types the counter id by hand ("Counter 1", "counter 1", "1")
+    while the customer joins through a QR code ("/join/counter_1"). If those
+    two strings differ the agent and the customer end up in two different
+    sessions and no message ever crosses between them.
+    """
+    value = str(raw or "").strip().lower()
+    if not value:
+        return ""
+    value = re.sub(r"[^a-z0-9]+", "_", value).strip("_")
+    if not value:
+        return ""
+    if value.isdigit():
+        return f"counter_{value}"
+    match = _COUNTER_NUMBER_RE.search(value)
+    if match and value.startswith("counter"):
+        return f"counter_{match.group(1)}"
+    if re.fullmatch(r"c\d+", value):
+        return f"counter_{value[1:]}"
+    return value
+
+
+def _known_counter_ids() -> List[str]:
+    return list(COUNTER_PIN_MAP.keys())
+
 
 def _get_counter_pin(counter_id: str) -> str:
-    normalized = counter_id.strip()
+    normalized = _normalize_counter_id(counter_id)
     pin = COUNTER_PIN_MAP.get(normalized) or COUNTER_PIN_MAP.get(normalized.upper())
     if not pin:
         pin = f"{abs(hash(normalized)) % 10000:04d}"
@@ -110,6 +148,10 @@ class ConnectionManager:
         self.asr_instances: Dict[str, ASRSimulator] = {}
         self.nlp = SmartNLPProcessor()
         self.metrics: Dict[str, Dict[str, Any]] = {}
+        # session_id -> role -> messages waiting for that role to connect
+        self.pending: Dict[str, Dict[str, List[dict]]] = {}
+
+    MAX_PENDING_PER_ROLE = 50
 
     async def connect(self, session_id: str, websocket: WebSocket, role: str, language: str = "en"):
         await websocket.accept()
@@ -136,11 +178,16 @@ class ConnectionManager:
             elif role == "agent":
                 self.sessions[session_id].agent_language = language
                 self.sessions[session_id].status = "active"
-                self.sessions[session_id].transcripts = []
-                self.sessions[session_id].cards = []
-                self.sessions[session_id].case_summary = {}
+                if "customer" not in self.active_connections.get(session_id, {}):
+                    # No live customer on this counter: start from a clean
+                    # session. When a customer is already waiting, their
+                    # earlier messages must be kept.
+                    self.sessions[session_id].transcripts = []
+                    self.sessions[session_id].cards = []
+                    self.sessions[session_id].case_summary = {}
         self.sessions[session_id].connected_at = time.time()
         logger.info("[ws] connect session=%s role=%s language=%s active_roles=%s", session_id, role, language, list(self.active_connections.get(session_id, {}).keys()))
+        await self.flush_pending(session_id, role)
 
     def disconnect(self, session_id: str, role: str):
         session_connections = self.active_connections.get(session_id)
@@ -162,6 +209,97 @@ class ConnectionManager:
                 await ws.send_json(data)
             except Exception as exc:
                 logger.exception("[ws] send_to_role failed session=%s role=%s: %s", session_id, role, exc)
+
+    def _queue_pending(self, session_id: str, role: str, data: dict) -> None:
+        queue = self.pending.setdefault(session_id, {}).setdefault(role, [])
+        queue.append(data)
+        if len(queue) > self.MAX_PENDING_PER_ROLE:
+            del queue[: len(queue) - self.MAX_PENDING_PER_ROLE]
+
+    async def flush_pending(self, session_id: str, role: str) -> None:
+        """Deliver messages that were sent before this role joined."""
+        queued = self.pending.get(session_id, {}).pop(role, [])
+        if not queued:
+            return
+        logger.info("[ws] flushing %d pending message(s) session=%s role=%s", len(queued), session_id, role)
+        for message in queued:
+            await self.send_to_role(session_id, role, message)
+
+    async def broadcast_presence(self, session_id: str) -> None:
+        """Tell both sides who is currently connected to the session.
+
+        Without this the agent has no way of noticing that the customer is
+        on a different counter or that their socket dropped.
+        """
+        connections = self.active_connections.get(session_id, {})
+        await self.send_json(session_id, {
+            "type": "presence",
+            "session_id": session_id,
+            "roles": list(connections.keys()),
+            "customer_connected": "customer" in connections,
+            "agent_connected": "agent" in connections,
+            "timestamp": int(time.time() * 1000),
+        })
+
+    async def deliver(self, session_id: str, role: str, data: dict) -> bool:
+        """Send a message to a role, buffering it when that role is offline.
+
+        Messages used to be dropped when the peer had not connected yet, which
+        is exactly what happens when a customer types before the agent signs
+        in at the counter.
+        """
+        ws = self.active_connections.get(session_id, {}).get(role)
+        if ws is None:
+            self._queue_pending(session_id, role, data)
+            logger.warning(
+                "[ws] role %s not connected for session %s, message queued (%d pending)",
+                role, session_id, len(self.pending.get(session_id, {}).get(role, [])),
+            )
+            return False
+        try:
+            await ws.send_json(data)
+            return True
+        except Exception as exc:
+            logger.exception("[ws] deliver failed session=%s role=%s: %s", session_id, role, exc)
+            self._queue_pending(session_id, role, data)
+            return False
+
+    async def deliver_translation(
+        self,
+        session_id: str,
+        role: str,
+        payload: dict,
+        original_text: str,
+        target_language: str,
+        source_language: str,
+        sender_role: str = "customer",
+    ) -> None:
+        """Translate an already delivered transcript and send it as an update.
+
+        The update carries the same timestamp as the original message, so the
+        frontends merge it into the existing bubble instead of adding a
+        duplicate one.
+        """
+        translated = await _translate_text_async(original_text, target_language, source_language)
+        update = {**payload, "translation_pending": False}
+        if payload.get("translation_mode") == "dual" and sender_role == "agent":
+            update["original_text"] = original_text
+        if translated and translated.strip() and translated.strip().lower() != original_text.strip().lower():
+            update["text"] = translated
+            update["is_translation"] = True
+            session = self.sessions.get(session_id)
+            if session:
+                for entry in session.transcripts:
+                    if entry.get("timestamp") == payload.get("timestamp"):
+                        entry["text"] = translated
+                        break
+                try:
+                    session.case_summary = self._compute_case_summary(session)
+                except Exception as exc:
+                    logger.exception("[ws] translation case summary failed session=%s: %s", session_id, exc)
+        else:
+            update["translation_unavailable"] = True
+        await self.deliver(session_id, role, update)
 
     async def broadcast(self, session_id: str, data: dict, exclude_role: str = None):
         for role, ws in list(self.active_connections.get(session_id, {}).items()):
@@ -303,6 +441,55 @@ def _get_language_pair(source_language: str, target_language: str) -> str:
     return f"{source}-{target}"
 
 
+def _is_quota_error(exc: Exception) -> bool:
+    """Detect quota/rate-limit errors from ghana-nlp so we can skip it quickly."""
+    msg = str(exc).lower()
+    return any(k in msg for k in ("quota", "rate limit", "429", "exceeded", "limit", "unauthorized", "401", "forbidden", "403"))
+
+
+_QUOTA_HIT: Dict[str, float] = {}
+_QUOTA_COOLDOWN = float(os.getenv("TRANSLATION_QUOTA_COOLDOWN", "300"))
+
+# provider:pair -> timestamp at which the provider may be tried again.
+# A dead provider used to be retried on EVERY message, which blocked the
+# event loop for seconds per message and made live transcripts look frozen.
+_PROVIDER_DISABLED: Dict[str, float] = {}
+_PROVIDER_COOLDOWN = float(os.getenv("TRANSLATION_PROVIDER_COOLDOWN", "300"))
+_PROVIDER_TIMEOUT = float(os.getenv("TRANSLATION_PROVIDER_TIMEOUT", "4"))
+_TRANSLATION_BUDGET = float(os.getenv("TRANSLATION_BUDGET", "6"))
+
+
+def _mark_quota_hit(pair: str):
+    _QUOTA_HIT[pair] = time.time()
+
+
+def _quota_active(pair: str) -> bool:
+    ts = _QUOTA_HIT.get(pair)
+    if not ts:
+        return False
+    if time.time() - ts > _QUOTA_COOLDOWN:
+        _QUOTA_HIT.pop(pair, None)
+        return False
+    return True
+
+
+def _provider_ready(provider: str, pair: str) -> bool:
+    key = f"{provider}:{pair}"
+    until = _PROVIDER_DISABLED.get(key)
+    if until is None:
+        return True
+    if time.time() >= until:
+        _PROVIDER_DISABLED.pop(key, None)
+        return True
+    return False
+
+
+def _disable_provider(provider: str, pair: str, seconds: float = None) -> None:
+    cooldown = _PROVIDER_COOLDOWN if seconds is None else seconds
+    _PROVIDER_DISABLED[f"{provider}:{pair}"] = time.time() + cooldown
+    logger.warning("[i18n] provider %s disabled for %s (%ss)", provider, pair, int(cooldown))
+
+
 def _get_translator():
     if not HAS_TRANSLATOR:
         raise RuntimeError("ghana-nlp is not installed")
@@ -312,10 +499,254 @@ def _get_translator():
     return GhanaNLP(api_key=api_key)
 
 
+_LIBRETRANSLATE_URL = os.getenv("LIBRETRANSLATE_URL", "").rstrip("/")
+_LIBRETRANSLATE_API_KEY = os.getenv("LIBRETRANSLATE_API_KEY", "")
+
+
+class _ProviderUnavailable(RuntimeError):
+    """Raised when a translation provider is unreachable, blocked or rate-limited."""
+
+
+# Google/LibreTranslate use "ak" for Akan (Twi); ghana-nlp uses "tw".
+_PROVIDER_LANG = {"tw": "ak", "ak": "ak", "en": "en"}
+
+
+def _provider_lang(code: str) -> str:
+    normalized = (code or "en").lower()
+    return _PROVIDER_LANG.get(normalized, normalized)
+
+
+def _translate_ghana_nlp(text: str, target_language: str, source_language: str = "en") -> Optional[str]:
+    """Primary translator. Returns None when the provider cannot help."""
+    if not text:
+        return text
+    if not HAS_TRANSLATOR:
+        raise _ProviderUnavailable("ghana-nlp is not installed")
+    if not os.getenv("KHAYA_API_KEY"):
+        raise _ProviderUnavailable("KHAYA_API_KEY is not set")
+    try:
+        translator = _get_translator()
+        translated = translator.translate(text=text, language_pair=f"{source_language}-{target_language}")
+    except Exception as exc:
+        pair = f"{source_language}-{target_language}"
+        if _is_quota_error(exc):
+            _mark_quota_hit(pair)
+        raise _ProviderUnavailable(f"ghana-nlp error: {exc}") from exc
+    # ghana-nlp returns a dict like {"type": ..., "message": ...} on error
+    # instead of raising — treat that as a failure.
+    if isinstance(translated, dict):
+        pair = f"{source_language}-{target_language}"
+        if _is_quota_error(str(translated.get("message", ""))):
+            _mark_quota_hit(pair)
+        raise _ProviderUnavailable(f"ghana-nlp error: {translated.get('message')}")
+    return translated or None
+
+
+def _translate_google(text: str, target_language: str, source_language: str = "en") -> Optional[str]:
+    """Local/free fallback via Google Translate (direct HTTP, no key needed)."""
+    if not text:
+        return text
+    url = "https://translate.googleapis.com/translate_a/single"
+    params = {
+        "client": "gtx",
+        "sl": _provider_lang(source_language),
+        "tl": _provider_lang(target_language),
+        "dt": "t",
+        "q": text,
+    }
+    try:
+        resp = requests.get(url, params=params, timeout=_PROVIDER_TIMEOUT)
+    except Exception as exc:
+        raise _ProviderUnavailable(f"google request failed: {exc}") from exc
+    if resp.status_code in (403, 429):
+        raise _ProviderUnavailable(f"google returned {resp.status_code}")
+    if resp.status_code != 200:
+        return None
+    try:
+        data = resp.json()
+    except Exception:
+        return None
+    if not data or not data[0]:
+        return None
+    translated = "".join([item[0] for item in data[0] if item[0]])
+    return translated or None
+
+
+def _translate_mymemory(text: str, target_language: str, source_language: str = "en") -> Optional[str]:
+    """Keyless translation via MyMemory Translation API."""
+    if not text:
+        return text
+    try:
+        resp = requests.get(
+            "https://api.mymemory.translated.net/translate",
+            params={"q": text, "langpair": f"{_provider_lang(source_language)}|{_provider_lang(target_language)}"},
+            timeout=_PROVIDER_TIMEOUT,
+        )
+    except Exception as exc:
+        raise _ProviderUnavailable(f"mymemory request failed: {exc}") from exc
+    if resp.status_code in (403, 429):
+        raise _ProviderUnavailable(f"mymemory returned {resp.status_code}")
+    if resp.status_code != 200:
+        return None
+    try:
+        data = resp.json()
+    except Exception:
+        return None
+    translated = (data.get("response") or {}).get("translatedText") or ""
+    return translated or None
+
+
+def _translate_libretranslate(text: str, target_language: str, source_language: str = "en") -> Optional[str]:
+    """Optional LibreTranslate instance (only used when one is configured)."""
+    if not text:
+        return text
+    if not _LIBRETRANSLATE_URL:
+        raise _ProviderUnavailable("no LibreTranslate instance configured")
+    payload = {
+        "q": text,
+        "source": _provider_lang(source_language),
+        "target": _provider_lang(target_language),
+        "format": "text",
+    }
+    if _LIBRETRANSLATE_API_KEY:
+        payload["api_key"] = _LIBRETRANSLATE_API_KEY
+    try:
+        resp = requests.post(f"{_LIBRETRANSLATE_URL}/translate", json=payload, timeout=_PROVIDER_TIMEOUT)
+    except Exception as exc:
+        raise _ProviderUnavailable(f"libretranslate request failed: {exc}") from exc
+    if resp.status_code in (400, 401, 403, 429):
+        raise _ProviderUnavailable(f"libretranslate returned {resp.status_code}")
+    if resp.status_code != 200:
+        return None
+    try:
+        data = resp.json()
+    except Exception:
+        return None
+    return data.get("translatedText") or None
+
+
 def _translate_one(text: str, language_pair: str) -> str:
-    translator = _get_translator()
-    translated = translator.translate(text=text, language_pair=language_pair)
-    return translated or text
+    """Translate with a bounded, failure-tolerant provider chain.
+
+    Every provider is guarded by a circuit breaker so an outage is only paid
+    for once, and the total time spent per call is capped. The caller runs
+    this off the event loop so a slow provider can never stall live messages.
+    """
+    source_lang, target_lang = language_pair.split("-", 1)
+    if source_lang == target_lang:
+        return text
+    deadline = time.time() + _TRANSLATION_BUDGET
+    providers = (
+        ("ghana-nlp", _translate_ghana_nlp),
+        ("google", _translate_google),
+        ("mymemory", _translate_mymemory),
+        ("libretranslate", _translate_libretranslate),
+    )
+    for name, provider in providers:
+        if time.time() >= deadline:
+            logger.info("[i18n] budget exhausted for %s, using offline fallback", language_pair)
+            break
+        if not _provider_ready(name, language_pair):
+            continue
+        try:
+            translated = provider(text, target_lang, source_lang)
+        except _ProviderUnavailable as exc:
+            _disable_provider(name, language_pair)
+            logger.warning("[i18n] %s unavailable for %s: %s", name, language_pair, exc)
+            continue
+        except Exception as exc:
+            _disable_provider(name, language_pair)
+            logger.warning("[i18n] %s failed for %s: %s", name, language_pair, exc)
+            continue
+        if translated and translated.strip() and translated.strip().lower() != text.strip().lower():
+            return translated
+    # Final fallback: local phrase dictionary (offline, instant)
+    return _translate_phrase_dict(text, target_lang)
+
+
+_TWI_PHRASE_DICT: Dict[str, str] = {
+    "hello": "Yoo",
+    "hi": "Yoo",
+    "good morning": "Medaase awo",
+    "good afternoon": "Medaase apɔse",
+    "good evening": "Medaase adwo",
+    "thank you": "Medaase pii",
+    "thanks": "Medaase pii",
+    "how are you": "De woh?",
+    "i am fine": "Yie, medaase",
+    "yes": "Yoo",
+    "no": "Daabi",
+    "please": "Mepɛ sɛ",
+    "help": "Mepɛ sɛ mesiesie me",
+    "help me": "Mepɛ sɛ mesiesie me",
+    "what is your name": "Wo din de?",
+    "my name is": "M din na",
+    "where are you": "Wohɔ wo?",
+    "i am from": "Me ti wɔ",
+    "how much": "De dɛ?",
+    "money": "Sika",
+    "water": "Nsa",
+    "food": "Asem",
+    "goodbye": "Medaase pii",
+    "see you later": "Hwɛ yie",
+    "okay": "Yoo, mayɛ",
+    "i understand": "Me tu am",
+    "i do not understand": "Me tu am",
+    "repeat": "Deɛn na wɔ hɔ?",
+    "speak slowly": "Gyae wo asem",
+    "thank you very much": "Medaase pii kakraa",
+    "sorry": "Mepɛ sɛ dam",
+    "excuse me": "Mepɛ sɛ dam",
+    "network": "Nkwa",
+    "internet": "Intanɛt",
+    "data": "Data",
+    "balance": "Balance",
+    "phone": "Wofa",
+    "call": "Sesa",
+    "message": "Asɛm",
+    "mobile money": "MoMo",
+    "bank": "Bank",
+    "account": "Account",
+    "transfer": "Sesa",
+    "deposit": "Depɔzit",
+    "withdraw": "Wiɔdɔ",
+    "problem": "Asɛm baako",
+    "issue": "Asɛm baako",
+    "help": "Mepɛ sɛ mesiesie me",
+    "assistance": "Mepɛ sɛ mesiesie me",
+    "support": "Mepɛ sɛ mesiesie me",
+    "customer": "Customer",
+    "agent": "Agent",
+    "session": "Session",
+    "case": "Case",
+    "number": "Nomba",
+    "name": "Din",
+    "phone number": "Wofa nomba",
+    "address": "Adrɛs",
+    "location": "Adrɛs",
+    "town": "Kuro",
+    "city": "Kuro",
+    "accra": "Nkran",
+    "kumasi": "Kumase",
+    "tamale": "Tamale",
+}
+
+
+def _translate_phrase_dict(text: str, target_lang: str) -> str:
+    """Last-resort phrase dictionary for Twi."""
+    if target_lang != "tw":
+        return text
+    key = text.strip().lower()
+    if key in _TWI_PHRASE_DICT:
+        return _TWI_PHRASE_DICT[key]
+    # Try matching individual words
+    words = re.findall(r'\w+', key)
+    translated_words = []
+    for word in words:
+        translated_words.append(_TWI_PHRASE_DICT.get(word, word))
+    if translated_words:
+        return " ".join(translated_words)
+    return text
 
 
 def _load_translation_cache():
@@ -340,21 +771,40 @@ _load_translation_cache()
 
 
 def _translate_text(text: str, target_language: str, source_language: str = "en") -> str:
-    if not text:
+    if not text or not isinstance(text, str):
         return text
     cache_key = f"{source_language}->{target_language}:{text.lower()}"
     cached = TRANSLATION_CACHE.get(cache_key)
-    if cached is not None:
+    if isinstance(cached, str) and cached:
         return cached
     try:
         translated = _translate_one(text, _get_language_pair(source_language, target_language))
-        if not translated:
+        if not isinstance(translated, str) or not translated:
+            return text
+        if translated.strip().lower() == text.strip().lower():
+            # A "translation" that is just the source text is not worth caching.
             return text
         TRANSLATION_CACHE[cache_key] = translated
         _save_translation_cache()
         return translated
     except Exception:
         logger.exception("Single translation failed for pair=%s", _get_language_pair(source_language, target_language))
+        return text
+
+
+async def _translate_text_async(text: str, target_language: str, source_language: str = "en") -> str:
+    """Translate without blocking the event loop.
+
+    Translation talks to third-party HTTP APIs, so it must never run inline
+    in the websocket handler - a slow provider would stall every other
+    message in the session.
+    """
+    if not text or not isinstance(text, str):
+        return text
+    try:
+        return await asyncio.to_thread(_translate_text, text, target_language, source_language)
+    except Exception:
+        logger.exception("Async translation failed for %s->%s", source_language, target_language)
         return text
 
 
@@ -409,6 +859,22 @@ def _translate_tree_nodes(tree: Dict, target_language: str) -> Dict:
 @app.get("/api/health")
 async def health():
     return {"status": "ok", "service": "EchoText Ghana API", "version": "1.0.0"}
+
+
+@app.get("/api/translation/status")
+async def translation_status():
+    """Report which translation backends are available."""
+    primary_ok = HAS_TRANSLATOR and bool(os.getenv("KHAYA_API_KEY"))
+    quota_active = {pair: _quota_active(pair) for pair in list(_QUOTA_HIT.keys())}
+    fallback_ok = True
+    return {
+        "primary": "ghana-nlp",
+        "primary_available": primary_ok,
+        "fallback": "google",
+        "fallback_url": "https://translate.googleapis.com",
+        "fallback_available": fallback_ok,
+        "quota_active": quota_active,
+    }
 
 
 @app.post("/api/translate/tree")
@@ -806,7 +1272,6 @@ _CUSTOMER_SUGGESTION_RULES: Dict[str, List[str]] = {
 }
 
 
-import re
 
 def _contains_sensitive_info(text: str) -> bool:
     cleaned = text.lower()
@@ -947,25 +1412,22 @@ def _pick_twi_suggestions(text: str) -> List[str]:
 
 
 def _apply_language_mix(suggestions: List[str], language: str, mode: str) -> List[str]:
+    """Localize quick-reply chips.
+
+    Uses the offline phrase dictionary on purpose: these are short UI chips
+    and the network path used to fire three extra translator calls for every
+    single message, which was the main source of the delivery lag.
+    """
     if not suggestions:
         return []
     if mode == "dual":
-        mixed = suggestions[:2]
-        if len(suggestions) > 2:
-            mixed.append(suggestions[2])
-        else:
-            mixed.append(suggestions[0])
-        try:
-            translated = _translate_batch([mixed[-1]], "tw")
-            mixed[-1] = translated[0] if translated and translated[0] else mixed[-1]
-        except Exception:
-            pass
+        mixed = list(suggestions[:2])
+        mixed.append(suggestions[2] if len(suggestions) > 2 else suggestions[0])
+        mixed[-1] = _translate_phrase_dict(mixed[-1], "tw")
         return mixed
     if language == "tw" or mode == "tw":
-        try:
-            return _translate_batch(suggestions[:3], "tw") or suggestions[:3]
-        except Exception:
-            return suggestions[:3]
+        localized = [_translate_phrase_dict(item, "tw") for item in suggestions[:3]]
+        return localized or suggestions[:3]
     return suggestions[:3]
 
 
@@ -990,19 +1452,28 @@ async def validate_counter_pin(request: Request):
         body = await request.json()
     except Exception:
         body = {}
-    counter_id = str(body.get("counter_id", "")).strip()
+    raw_counter_id = str(body.get("counter_id", "")).strip()
     pin = str(body.get("pin", "")).strip()
+    counter_id = _normalize_counter_id(raw_counter_id)
+    if not counter_id:
+        raise HTTPException(status_code=404, detail="Counter not found")
     expected_pin = _get_counter_pin(counter_id)
     if not expected_pin:
         raise HTTPException(status_code=404, detail="Counter not found")
     if pin != expected_pin:
         raise HTTPException(status_code=401, detail="Invalid PIN")
-    return {"valid": True, "counter_id": counter_id, "pin": expected_pin}
+    return {
+        "valid": True,
+        "counter_id": counter_id,
+        "requested_counter_id": raw_counter_id,
+        "known": counter_id in _known_counter_ids(),
+        "pin": expected_pin,
+    }
 
 
 @app.get("/api/counter/{counter_id}/session")
 async def get_or_create_counter_session(counter_id: str):
-    normalized = counter_id.strip()
+    normalized = _normalize_counter_id(counter_id)
     expected_pin = _get_counter_pin(normalized)
     if not expected_pin:
         raise HTTPException(status_code=404, detail="Counter not found")
@@ -1024,11 +1495,14 @@ async def get_or_create_counter_session(counter_id: str):
 async def get_active_sessions():
     result = []
     for session_id, session in manager.sessions.items():
-        is_active = session_id in manager.active_connections
+        connections = manager.active_connections.get(session_id, {})
         result.append({
             "session_id": session_id,
             "counter_id": session.counter_id,
-            "status": "active" if is_active else "waiting",
+            "status": "active" if connections else "waiting",
+            "customer_connected": "customer" in connections,
+            "agent_connected": "agent" in connections,
+            "roles": list(connections.keys()),
             "created_at": session.created_at,
         })
     return {"sessions": result}
@@ -1040,12 +1514,17 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
     role = websocket.query_params.get("role", "customer")
     pin = websocket.query_params.get("pin", "")
 
+    # Both sides must land in the same session, whatever spelling of the
+    # counter id they used ("counter_1", "Counter 1", "1", ...).
+    session_id = _normalize_counter_id(session_id)
+
     if role == "agent":
         counter_id = session_id
         if counter_id.endswith("_session"):
             counter_id = counter_id.removesuffix("_session")
         expected_pin = COUNTER_PIN_MAP.get(counter_id) or COUNTER_PIN_MAP.get(counter_id.upper())
         if not expected_pin or pin != expected_pin:
+            logger.warning("[ws] agent rejected session=%s counter=%s reason=invalid_pin", session_id, counter_id)
             await websocket.close(code=4001, reason="Invalid PIN")
             return
 
@@ -1063,7 +1542,10 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
         }
         if role == "agent" and session:
             connected_payload["case_summary"] = manager._compute_case_summary(session)
+        connected_payload["customer_connected"] = "customer" in manager.active_connections.get(session_id, {})
+        connected_payload["agent_connected"] = "agent" in manager.active_connections.get(session_id, {})
         await manager.send_json(session_id, connected_payload)
+        await manager.broadcast_presence(session_id)
 
         transcription_task = None
         try:
@@ -1075,7 +1557,14 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
                     payload = message.get("data") or {}
                     logger.info("[ws] recv session=%s role=%s type=%s", session_id, role, msg_type)
 
-                    if msg_type == "response":
+                    if msg_type == "ping":
+                        # Keep-alive: also tells the client the peer is here.
+                        await manager.send_to_role(session_id, role, {
+                            "type": "pong",
+                            "timestamp": int(time.time() * 1000),
+                        })
+                        await manager.broadcast_presence(session_id)
+                    elif msg_type == "response":
                         other_role = "agent" if role == "customer" else "customer"
                         text = payload.get("text", "")
                         speaker = role
@@ -1083,22 +1572,25 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
                         customer_language = session.language if session else "en"
                         agent_language = session.agent_language if session else "en"
                         translation_mode = session.translation_mode if session else "translated"
-                        customer_facing_text = text
-                        agent_facing_text = text
-                        original_for_customer = None
+                        spoken_language = language
+
+                        # Work out up-front whether the receiver needs a
+                        # translated copy. The transcript is always delivered
+                        # immediately; the translation follows as an update.
+                        translate_for_receiver = False
+                        target_language = None
+                        source_language = None
                         if role == "customer":
                             if customer_language != agent_language:
-                                agent_facing_text = _translate_text(text, agent_language, source_language=customer_language)
-                        elif role == "agent":
-                            spoken_language = language
-                            if translation_mode == "dual":
-                                if spoken_language != customer_language:
-                                    customer_facing_text = _translate_text(text, customer_language, source_language=spoken_language)
-                                original_for_customer = text
-                            else:
-                                if spoken_language != customer_language:
-                                    customer_facing_text = _translate_text(text, customer_language, source_language=spoken_language)
-                        forward_text = agent_facing_text if other_role == "agent" else customer_facing_text
+                                translate_for_receiver = True
+                                target_language = agent_language
+                                source_language = customer_language
+                        else:
+                            if translation_mode == "dual" or spoken_language != customer_language:
+                                translate_for_receiver = True
+                                target_language = customer_language
+                                source_language = spoken_language
+
                         nlp_cards = []
                         if session and text.strip():
                             try:
@@ -1112,45 +1604,49 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
                                 logger.exception("[ws] nlp failed session=%s role=%s: %s", session_id, role, exc)
                         transcript_message = {
                             "type": "transcript",
-                            "text": forward_text,
+                            "text": text,
                             "speaker": speaker,
                             "timestamp": payload.get("timestamp") or int(time.time() * 1000),
                             "is_final": True,
                             "translation_mode": translation_mode,
-                            "original_text": original_for_customer if role == "agent" else None,
+                            "original_text": None,
                             "cards": nlp_cards or None,
                         }
-                        logger.info("[ws] forwarding transcript session=%s role=%s -> %s text=%r", session_id, role, other_role, forward_text)
+                        logger.info("[ws] forwarding transcript session=%s role=%s -> %s text=%r", session_id, role, other_role, text)
                         agent_suggestions = []
                         customer_suggestions = []
                         try:
                             if role == "customer" and other_role == "agent":
-                                agent_suggestions = _apply_language_mix(_match_suggestions(agent_facing_text, role="agent"), agent_language, translation_mode)
+                                agent_suggestions = _apply_language_mix(_match_suggestions(text, role="agent"), agent_language, translation_mode)
                             elif role == "agent" and other_role == "customer":
-                                customer_suggestions = _apply_language_mix(_match_suggestions(customer_facing_text, role="customer"), customer_language, translation_mode)
+                                customer_suggestions = _apply_language_mix(_match_suggestions(text, role="customer"), customer_language, translation_mode)
                         except Exception as exc:
                             logger.exception("[ws] suggestions failed session=%s role=%s: %s", session_id, role, exc)
                         forward_payload = {
                             "type": "transcript",
-                            "text": forward_text,
+                            "text": text,
                             "speaker": speaker,
                             "timestamp": payload.get("timestamp") or int(time.time() * 1000),
                             "is_final": True,
                             "translation_mode": translation_mode,
-                            "original_text": original_for_customer if role == "agent" else None,
+                            "original_text": None,
                             "suggested_replies": agent_suggestions if other_role == "agent" else customer_suggestions,
                             "cards": nlp_cards or None,
+                            "translation_pending": translate_for_receiver,
                         }
-                        target_ws = manager.active_connections.get(session_id, {}).get(other_role)
-                        if target_ws:
-                            try:
-                                await target_ws.send_json(forward_payload)
-                            except Exception as exc:
-                                logger.exception("[ws] forward failed session=%s role=%s: %s", session_id, other_role, exc)
-                                await manager.broadcast(session_id, forward_payload, exclude_role=role)
-                        else:
-                            logger.warning("[ws] target role %s not found for session %s, broadcasting to all except sender", other_role, session_id)
-                            await manager.broadcast(session_id, forward_payload, exclude_role=role)
+                        # Deliver the message first, translate afterwards. The
+                        # receiver always gets the text immediately instead of
+                        # waiting for a third-party translation API.
+                        if session is not None:
+                            session.transcripts.append(transcript_message)
+                        await manager.deliver(session_id, other_role, forward_payload)
+                        if translate_for_receiver:
+                            asyncio.create_task(
+                                manager.deliver_translation(
+                                    session_id, other_role, forward_payload, text,
+                                    target_language, source_language, role,
+                                )
+                            )
                         await manager.send_to_role(session_id, role, {
                             "type": "ack",
                             "message": "Response received",
@@ -1158,7 +1654,6 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
                             "timestamp": int(time.time() * 1000),
                         })
                         if session is not None:
-                            session.transcripts.append(transcript_message)
                             try:
                                 session.case_summary = manager._compute_case_summary(session)
                             except Exception as exc:
@@ -1276,6 +1771,8 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
             logger.exception("[ws] session=%s role=%s unexpected error: %s", session_id, role, exc)
     finally:
         manager.disconnect(session_id, role)
+        with suppress(Exception):
+            await manager.broadcast_presence(session_id)
         if role == "customer":
             manager.asr_instances.pop(session_id, None)
         if transcription_task:

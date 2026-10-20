@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { Shield, ArrowLeft, Lock, User, Eye, EyeOff } from 'lucide-react'
+import { Shield, ArrowLeft, Lock, User, Eye, EyeOff, Radio } from 'lucide-react'
 
 const getBackendBaseUrl = () => {
   const raw = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000'
@@ -16,6 +16,31 @@ export default function AgentLogin({ onBack, onLogin, initialCounterId }) {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [showPin, setShowPin] = useState(false)
+  const [waitingCounters, setWaitingCounters] = useState([])
+
+  // Show which counters currently have a customer waiting, so the agent
+  // signs in to the same counter the customer joined.
+  useEffect(() => {
+    let cancelled = false
+    const load = async () => {
+      try {
+        const res = await fetch(`${getBackendBaseUrl()}/api/sessions/active`)
+        if (!res.ok) return
+        const data = await res.json()
+        if (cancelled) return
+        const sessions = (data.sessions || []).filter(s => s.customer_connected)
+        setWaitingCounters(sessions.map(s => s.counter_id))
+      } catch {
+        // offline is fine - the agent can still type a counter id
+      }
+    }
+    load()
+    const timer = setInterval(load, 5000)
+    return () => {
+      cancelled = true
+      clearInterval(timer)
+    }
+  }, [])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -38,8 +63,11 @@ export default function AgentLogin({ onBack, onLogin, initialCounterId }) {
         setLoading(false)
         return
       }
+      const data = await res.json().catch(() => ({}))
+      // Use the canonical counter id from the server so the agent always
+      // joins the same session as the customer.
       onLogin?.({
-        counterId: counterId.trim(),
+        counterId: data.counter_id || counterId.trim(),
         agentName: agentName.trim(),
         pin: pin.trim(),
       })
@@ -123,6 +151,23 @@ export default function AgentLogin({ onBack, onLogin, initialCounterId }) {
               onChange={(e) => setCounterId(e.target.value)}
               autoComplete="off"
             />
+            {waitingCounters.length > 0 && (
+              <div className="agent-waiting-counters">
+                <span className="agent-waiting-label">
+                  <Radio size={13} /> Customer waiting at:
+                </span>
+                {waitingCounters.map(c => (
+                  <button
+                    key={c}
+                    type="button"
+                    className={'agent-waiting-chip' + (counterId.trim().toLowerCase() === c ? ' active' : '')}
+                    onClick={() => setCounterId(c)}
+                  >
+                    {c}
+                  </button>
+                ))}
+              </div>
+            )}
           </motion.div>
 
           <motion.div

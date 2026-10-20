@@ -43,6 +43,7 @@ export default function AgentDashboard({ sessionId, demoMode, onBack, agentLogin
   const [isRecording, setIsRecording] = useState(false)
   const [asrStatus, setAsrStatus] = useState('idle')
   const [customerLanguage, setCustomerLanguage] = useState('en')
+  const [customerConnected, setCustomerConnected] = useState(false)
   const [activeTab, setActiveTab] = useState('transcript')
   const [dualLanguage, setDualLanguage] = useState(false)
   const [speakingId, setSpeakingId] = useState(null)
@@ -74,6 +75,7 @@ export default function AgentDashboard({ sessionId, demoMode, onBack, agentLogin
   const [agentSuggestions, setAgentSuggestions] = useState([])
   const transcriptsContainerRef = useRef(null)
   const localTranscriptRef = useRef('')
+  const restoredSessionRef = useRef(null)
   const isNearBottomRef = useRef(true)
   const speechRecognitionRef = useRef(null)
   const mediaRecorderRef = useRef(null)
@@ -239,23 +241,30 @@ export default function AgentDashboard({ sessionId, demoMode, onBack, agentLogin
 
   const sendAgentMessage = (text) => {
     if (!text.trim()) return
+    const trimmed = text.trim()
     if (demoMode) {
-      addAgentMessage(text.trim())
-      setAgentInput('')
-      setPendingVoiceMessage('')
-      setLastRecordingUrl('')
-      setAgentSuggestions([])
-      simulateCustomerResponse()
-    } else {
-      const trimmed = text.trim()
       addAgentMessage(trimmed)
       setAgentInput('')
       setPendingVoiceMessage('')
       setLastRecordingUrl('')
       setAgentSuggestions([])
-      console.info('[agent] send response', { text: trimmed, sessionId })
-      send({ type: 'response', data: { text: trimmed, speaker: 'agent', timestamp: Date.now() } })
+      simulateCustomerResponse()
+      return
     }
+    const message = { type: 'response', data: { text: trimmed, speaker: 'agent', timestamp: Date.now() } }
+    const sent = connectionStatus === 'connected' ? send(message) : false
+    if (!sent) {
+      // Socket not ready - keep the message and flush it on reconnect.
+      setOfflineQueue(prev => [...prev, message])
+      addAgentMessage(trimmed, true)
+    } else {
+      addAgentMessage(trimmed)
+    }
+    setAgentInput('')
+    setPendingVoiceMessage('')
+    setLastRecordingUrl('')
+    setAgentSuggestions([])
+    console.info('[agent] send response', { text: trimmed, sessionId })
   }
 
   const handleMessage = useCallback((data) => {
@@ -292,6 +301,12 @@ export default function AgentDashboard({ sessionId, demoMode, onBack, agentLogin
         if (data.customer_language) {
           setCustomerLanguage(data.customer_language)
         }
+        if (data.customer_connected !== undefined) {
+          setCustomerConnected(!!data.customer_connected)
+        }
+        break
+      case 'presence':
+        setCustomerConnected(!!data.customer_connected)
         break
       case 'customer_language':
         setCustomerLanguage(data.language)
@@ -746,6 +761,14 @@ export default function AgentDashboard({ sessionId, demoMode, onBack, agentLogin
       .catch(() => {})
   }, [sessionId, connectionStatus])
 
+  // Pick up anything the customer said before the agent joined the counter.
+  useEffect(() => {
+    if (!sessionId || connectionStatus !== 'connected') return
+    if (restoredSessionRef.current === sessionId) return
+    restoredSessionRef.current = sessionId
+    restoreConversation()
+  }, [sessionId, connectionStatus])
+
   useEffect(() => {
     if (connectionStatus !== 'connected' || offlineQueue.length === 0) return
     const queue = [...offlineQueue]
@@ -757,7 +780,11 @@ export default function AgentDashboard({ sessionId, demoMode, onBack, agentLogin
       }
     }
     if (sent > 0) {
+      const flushed = queue.slice(0, sent).map(m => m.data?.timestamp).filter(Boolean)
       setOfflineQueue(prev => prev.slice(sent))
+      if (flushed.length) {
+        setTranscripts(prev => prev.map(t => flushed.includes(t.timestamp) ? { ...t, pending: false } : t))
+      }
     }
   }, [connectionStatus, offlineQueue.length, send])
 
@@ -778,20 +805,6 @@ export default function AgentDashboard({ sessionId, demoMode, onBack, agentLogin
     }, 300)
     return () => clearTimeout(timer)
   }, [agentInput, connectionStatus, send])
-
-  const sendAgentResponse = (text) => {
-    if (!text.trim()) return
-    const message = { type: 'response', data: { text: text.trim(), speaker: 'agent', timestamp: Date.now() } }
-    if (connectionStatus !== 'connected') {
-      setOfflineQueue(prev => [...prev, message])
-      addAgentMessage(text.trim(), true)
-    } else {
-      send(message)
-      addAgentMessage(text.trim())
-    }
-    setAgentInput('')
-    simulateCustomerResponse()
-  }
 
   const resolveCase = () => {
     const cn = caseNumber || `CASE${Date.now().toString().slice(-6)}`
@@ -947,6 +960,10 @@ export default function AgentDashboard({ sessionId, demoMode, onBack, agentLogin
                 <div className="agent-topbar-meta">
                   <span className="agent-status-dot" style={{ background: statusColor }} />
                   {statusLabel} • MTN Service Center • Customer: {customerLangLabel}
+                  <span className={'agent-peer-status' + (customerConnected ? ' connected' : '')} style={{ marginLeft: 8 }}>
+                    <span className="agent-peer-dot" />
+                    {customerConnected ? 'Customer connected' : 'No customer on this counter'}
+                  </span>
                   {reconnectCount > 0 && (
                     <span style={{ marginLeft: 8, color: '#f59e0b', fontSize: '0.7rem', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                       <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#f59e0b', animation: 'pulse 1.4s ease-in-out infinite' }} />
@@ -1132,6 +1149,12 @@ export default function AgentDashboard({ sessionId, demoMode, onBack, agentLogin
                               <span className="agent-message-time">{new Date(transcript.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                               {transcript.speaker === 'agent' && !transcript.pending && (
                                 <span className="agent-message-status delivered">✓</span>
+                              )}
+                              {transcript.translation_pending && (
+                                <span className="agent-message-status">Translating…</span>
+                              )}
+                              {transcript.translation_unavailable && (
+                                <span className="agent-message-status">Untranslated</span>
                               )}
                             </div>
                           </div>

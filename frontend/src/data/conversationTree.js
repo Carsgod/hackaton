@@ -4,8 +4,84 @@ export const DEMO_TREE_EN = {
     options: [
       { label: 'I sent money to my sister', next: 'sister' },
       { label: 'I have a billing issue', next: 'billing_auth' },
-      { label: 'I need help with a transaction', next: 'transaction' }
+      { label: 'I need help with a transaction', next: 'transaction' },
+      { label: 'I have a problem with my MoMo transaction', next: 'momo_problem' }
     ]
+  },
+  momo_problem: {
+    agent: 'I\'m sorry about that, Samuel. What happened?',
+    options: [
+      { label: 'I sent GH₵50, but an extra GH₵5 was deducted from my account', next: 'momo_deduction' },
+      { label: 'I sent GH₵50, but an extra GH₵5 was deducted from my account', next: 'momo_deduction' },
+      { label: 'An extra GH₵5 was deducted from my MoMo balance', next: 'momo_deduction' }
+    ]
+  },
+  momo_deduction: {
+    agent: 'I understand, Samuel. May I have your full name, please?',
+    options: [
+      { label: 'My name is Samuel Tettey', next: 'momo_name' },
+      { label: 'Samuel Tettey', next: 'momo_name' }
+    ]
+  },
+  momo_name: {
+    agent: 'Thank you. May I have your MoMo number?',
+    options: [
+      { label: '0241234567', next: 'momo_number' },
+      { label: 'It is 0241234567', next: 'momo_number' }
+    ]
+  },
+  momo_number: {
+    agent: 'Thank you, Samuel. Do you have the transaction reference?',
+    options: [
+      { label: 'Yes. REF88321', next: 'momo_reference' },
+      { label: 'REF88321', next: 'momo_reference' }
+    ]
+  },
+  momo_reference: {
+    agent: 'When did you make the transaction?',
+    options: [
+      { label: 'Today, around 3:45 PM', next: 'momo_time' },
+      { label: 'Around 3:45 PM today', next: 'momo_time' }
+    ]
+  },
+  momo_time: {
+    agent: 'Let me check your complaint and see how we can resolve it.',
+    options: [
+      { label: 'So, will you refund my money?', next: 'momo_refund' },
+      { label: 'Can you refund the GH₵5?', next: 'momo_refund' }
+    ]
+  },
+  momo_refund: {
+    agent: 'Yes, Samuel. If our checks confirm that the GH₵5 was deducted incorrectly, I can help initiate the refund process.',
+    options: [
+      { label: 'Thank you. How long will it take to receive my money?', next: 'momo_timeline' },
+      { label: 'How long will the refund take?', next: 'momo_timeline' }
+    ]
+  },
+  momo_timeline: {
+    agent: 'The refund may be processed immediately, but in some cases it can take up to 15 days. I will explain the next steps and help you follow up.',
+    options: [
+      { label: 'Okay. Will I be able to check the progress?', next: 'momo_track' },
+      { label: 'How do I track the refund?', next: 'momo_track' }
+    ]
+  },
+  momo_track: {
+    agent: 'Yes, Samuel. Please keep your transaction reference, REF88321, so you can use it when following up on your complaint.',
+    options: [
+      { label: 'Thank you for helping me', next: 'momo_end' },
+      { label: 'Thank you', next: 'momo_end' }
+    ]
+  },
+  momo_end: {
+    agent: 'You\'re welcome, Samuel. Is there anything else I can help you with?',
+    options: [
+      { label: 'No, that is all. Thank you.', next: 'momo_done' },
+      { label: 'No, thank you', next: 'momo_done' }
+    ]
+  },
+  momo_done: {
+    agent: 'Thank you for visiting MTN, Samuel. Have a good day!',
+    options: []
   },
   sister: {
     agent: 'I\'m sorry to hear that. Let me check the transaction for you. Can you tell me the phone number you sent to?',
@@ -322,8 +398,84 @@ export const DEMO_TREE_TWI = {
     options: [
       { label: 'Mɛtrɛɛ sika kɔɔ me nuabea nkyɛn', next: 'sister' },
       { label: 'Me billing no nya asɛm', next: 'billing_auth' },
-      { label: 'Mehia transaction ho ɔkɔmfo', next: 'transaction' }
+      { label: 'Mehia transaction ho ɔkɔmfo', next: 'transaction' },
+      { label: 'Mehia asɛm baako wɔ me MoMo transaction mu', next: 'momo_problem' }
     ]
+  },
+  momo_problem: {
+    agent: 'Mepa wo kyɛw, Samuel. Ɛdeɛn na wɔayi?',
+    options: [
+      { label: 'Mɛtrɛɛ GH₵50, nanso GH₵5 foforo afi me sika mu', next: 'momo_deduction' },
+      { label: 'GH₵5 foforo afi me MoMo sika mu', next: 'momo_deduction' },
+      { label: 'Asɛm baako wɔ me MoMo sika mu', next: 'momo_deduction' }
+    ]
+  },
+  momo_deduction: {
+    agent: 'Metu am, Samuel. Menni wo din na ma me nhwɛ no?',
+    options: [
+      { label: 'Me din na Samuel Tettey', next: 'momo_name' },
+      { label: 'Samuel Tettey', next: 'momo_name' }
+    ]
+  },
+  momo_name: {
+    agent: 'Medaase. Ma menhwɛ wo MoMo nomba?',
+    options: [
+      { label: '0241234567', next: 'momo_number' },
+      { label: 'Na ɛyɛ 0241234567', next: 'momo_number' }
+    ]
+  },
+  momo_number: {
+    agent: 'Medaase, Samuel. Wohia transaction reference no?',
+    options: [
+      { label: 'Aane. REF88321', next: 'momo_reference' },
+      { label: 'REF88321', next: 'momo_reference' }
+    ]
+  },
+  momo_reference: {
+    agent: 'Wode transaction no ayɛ dɛn na ɛyɛ?',
+    options: [
+      { label: 'Agyee, around 3:45 PM', next: 'momo_time' },
+      { label: 'Around 3:45 PM agyee', next: 'momo_time' }
+    ]
+  },
+  momo_time: {
+    agent: 'Ma me hwɛ wo complaint no na ma me bere kakra nhwehwɛ eyi mu.',
+    options: [
+      { label: 'Enti, mobɛsan de me sika no ama me?', next: 'momo_refund' },
+      { label: 'Mopɛ sɛ ma me refund?', next: 'momo_refund' }
+    ]
+  },
+  momo_refund: {
+    agent: 'Aane, Samuel. Sɛ wɔnnye sɛ GH₵5 no wɔayi deɛn na metumi aboa wo refund process no.',
+    options: [
+      { label: 'Medaase. Ɛbɛtwa ahe sɛ me sika no?', next: 'momo_timeline' },
+      { label: 'Ɛbɛtwa ahe sɛ refund no?', next: 'momo_timeline' }
+    ]
+  },
+  momo_timeline: {
+    agent: 'Refund no bɛtwa ahyɛ wo, nanso sɛ dɛn na ɛyɛ, bɛtwa sɛ nnɔnhwere 15 mu. Ma menhwɛ nnɛ no na ma me bere kakra nhwehwɛ wo.',
+    options: [
+      { label: 'Yoo. Mɛtumi akɔnka progress no?', next: 'momo_track' },
+      { label: 'Bɛtumi asan nkɔma me?', next: 'momo_track' }
+    ]
+  },
+  momo_track: {
+    agent: 'Aane, Samuel. Deɛn na wɔ hɔ? Ka wo transaction reference no, REF88321, sɛ wohwɛ no a wode nhwehwɛ wo complaint no.',
+    options: [
+      { label: 'Medaase pii sɛ mahu wo', next: 'momo_end' },
+      { label: 'Medaase', next: 'momo_end' }
+    ]
+  },
+  momo_end: {
+    agent: 'Yɛma wo akwaaba. Ɛdeɛn na metumi ayɛ wo foforo biara?',
+    options: [
+      { label: 'Daabi, medaase', next: 'momo_done' },
+      { label: 'Daabi, medaase pii', next: 'momo_done' }
+    ]
+  },
+  momo_done: {
+    agent: 'Medaase pii sɛ wode kɔ MTN, Samuel. Da no nkɔ yie mma wo!',
+    options: []
   },
   sister: {
     agent: 'Mente ase. Ma me hwɛ transaction no. Bɛtumi ka wo telefon number no a wokɔɔ hɔ no?',

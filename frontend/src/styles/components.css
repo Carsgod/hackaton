@@ -1284,6 +1284,7 @@
 
 /* ===== TRANSCRIPTION PAGE ===== */
 .transcription-page {
+  position: relative;
   display: flex;
   flex-direction: column;
   height: 100vh;
@@ -1293,6 +1294,8 @@
 }
 
 .transcription-header {
+  position: relative;
+  z-index: 130;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -2065,7 +2068,11 @@
   background: var(--bg-secondary);
   border-top: 1px solid var(--border-color);
   padding: 10px 20px;
-  z-index: 50;
+  z-index: 120;
+}
+
+.response-bar.always-visible {
+  z-index: 120;
 }
 
 .response-input-wrapper {
@@ -5276,6 +5283,255 @@
   color: #ffffff !important;
 }
 
+/* ===== TRANSLATION STATUS BANNER ===== */
+  .translation-status-banner {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 8px 16px;
+    background: #fef3c7;
+    color: #92400e;
+    font-size: 0.8rem;
+    font-weight: 600;
+    border-bottom: 1px solid #fde68a;
+  }
+
+  .translation-status-banner-dismiss {
+    background: none;
+    border: none;
+    color: inherit;
+    cursor: pointer;
+    font-size: 0.9rem;
+    padding: 0 4px;
+    margin-left: 4px;
+    opacity: 0.7;
+  }
+
+  .translation-status-banner-dismiss:hover {
+    opacity: 1;
+  }
+
+  [data-theme="dark"] .translation-status-banner {
+    background: rgba(251, 191, 36, 0.15);
+    color: #fbbf24;
+    border-bottom-color: rgba(251, 191, 36, 0.3);
+  }
+
+  [data-high-contrast="true"] .translation-status-banner {
+    background: #000000 !important;
+    border-color: #ffffff !important;
+    color: #ffff00 !important;
+  }
+
+/* ===== GREETING SCREEN ===== *//* The welcome screen is an overlay on top of the transcript area. It used to
+   sit in normal flow *after* .transcription-body, which pushed the
+   "Begin Chat" button below the viewport (the page is 100dvh + overflow
+   hidden), so the button was never reachable. */
+.greeting-screen {
+  position: absolute;
+  inset: 0;
+  z-index: 125;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 40px 20px;
+  overflow-y: auto;
+  background: var(--bg-primary);
+}
+
+.greeting-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 28px;
+  max-width: 640px;
+  width: 100%;
+  margin: auto;
+  text-align: center;
+}
+
+.greeting-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 28px 40px;
+  box-shadow: var(--shadow-md);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.greeting-icon {
+  font-size: 2.5rem;
+  margin-bottom: 4px;
+}
+
+.greeting-title {
+  font-size: clamp(2rem, 6vw, 3.2rem);
+  font-weight: 900;
+  color: var(--accent);
+  letter-spacing: -0.02em;
+  margin: 0;
+}
+
+.greeting-subtitle {
+  color: var(--text-secondary);
+  font-size: 1rem;
+  margin: 0;
+}
+
+.greeting-block-letters {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px 8px;
+  font-size: clamp(1.8rem, 5vw, 3rem);
+  font-weight: 900;
+  color: var(--text-primary);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  line-height: 1.2;
+}
+
+.greeting-block-letters .block-letter {
+  display: inline-block;
+  background: var(--bg-card);
+  border: 1.5px solid var(--border-color);
+  border-radius: 8px;
+  padding: 4px 10px;
+  min-width: 38px;
+  text-align: center;
+  animation: blockPop 0.4s ease-out backwards;
+}
+
+[data-theme="dark"] .greeting-block-letters .block-letter {
+  background: #1e293b;
+  border-color: #334155;
+}
+
+[data-high-contrast="true"] .greeting-block-letters .block-letter {
+  background: #000000 !important;
+  border-color: #ffffff !important;
+  color: #ffffff !important;
+}
+
+@keyframes blockPop {
+  from { opacity: 0; transform: scale(0.6) translateY(10px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.greeting-block-letters .block-letter:nth-child(1) { animation-delay: 0.4s; }
+.greeting-block-letters .block-letter:nth-child(2) { animation-delay: 0.46s; }
+.greeting-block-letters .block-letter:nth-child(3) { animation-delay: 0.52s; }
+.greeting-block-letters .block-letter:nth-child(4) { animation-delay: 0.58s; }
+.greeting-block-letters .block-letter:nth-child(5) { animation-delay: 0.64s; }
+.greeting-block-letters .block-letter:nth-child(6) { animation-delay: 0.7s; }
+.greeting-block-letters .block-letter:nth-child(7) { animation-delay: 0.76s; }
+.greeting-block-letters .block-letter:nth-child(8) { animation-delay: 0.82s; }
+.greeting-block-letters .block-letter:nth-child(9) { animation-delay: 0.88s; }
+.greeting-block-letters .block-letter:nth-child(10) { animation-delay: 0.94s; }
+.greeting-block-letters .block-letter:nth-child(11) { animation-delay: 1.0s; }
+.greeting-block-letters .block-letter:nth-child(12) { animation-delay: 1.06s; }
+.greeting-block-letters .block-letter:nth-child(13) { animation-delay: 1.12s; }
+.greeting-block-letters .block-letter:nth-child(14) { animation-delay: 1.18s; }
+.greeting-block-letters .block-letter:nth-child(15) { animation-delay: 1.24s; }
+.greeting-block-letters .block-letter:nth-child(16) { animation-delay: 1.3s; }
+.greeting-block-letters .block-letter:nth-child(17) { animation-delay: 1.36s; }
+.greeting-block-letters .block-letter:nth-child(18) { animation-delay: 1.42s; }
+.greeting-block-letters .block-letter:nth-child(19) { animation-delay: 1.48s; }
+.greeting-block-letters .block-letter:nth-child(20) { animation-delay: 1.54s; }
+.greeting-block-letters .block-letter:nth-child(21) { animation-delay: 1.6s; }
+.greeting-block-letters .block-letter:nth-child(22) { animation-delay: 1.66s; }
+.greeting-block-letters .block-letter:nth-child(23) { animation-delay: 1.72s; }
+.greeting-block-letters .block-letter:nth-child(24) { animation-delay: 1.78s; }
+
+.greeting-agent {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  color: var(--text-secondary);
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+.greeting-agent-avatar {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--accent-light);
+  color: var(--accent);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.8rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="dark"] .greeting-agent-avatar {
+  background: rgba(16, 185, 129, 0.2);
+}
+
+.greeting-start {
+  margin-top: 8px;
+  padding: 14px 40px;
+  font-size: 1.05rem;
+}
+
+/* ===== GREETING SCREEN RESPONSIVE ===== */
+@media (max-width: 640px) {
+  .greeting-card {
+    padding: 22px 24px;
+  }
+  .greeting-block-letters .block-letter {
+    min-width: 30px;
+    padding: 4px 6px;
+    font-size: clamp(1.3rem, 4.5vw, 2rem);
+  }
+  .greeting-start {
+    padding: 12px 32px;
+  }
+}
+
+/* Short screens (laptops in landscape, small tablets): keep the
+   "Begin Chat" button on screen without scrolling. */
+@media (max-height: 720px) {
+  .greeting-screen {
+    padding: 20px 16px;
+  }
+  .greeting-content {
+    gap: 16px;
+  }
+  .greeting-card {
+    padding: 16px 24px;
+  }
+  .greeting-icon {
+    font-size: 1.8rem;
+  }
+  .greeting-block-letters {
+    font-size: clamp(1.1rem, 3vw, 1.7rem);
+    gap: 4px 6px;
+  }
+  .greeting-block-letters .block-letter {
+    min-width: 26px;
+    padding: 2px 6px;
+  }
+  .greeting-agent-avatar {
+    width: 40px;
+    height: 40px;
+    font-size: 1.2rem;
+  }
+  .greeting-agent {
+    font-size: 0.9rem;
+  }
+  .greeting-start {
+    padding: 10px 28px;
+    font-size: 0.95rem;
+  }
+}
+
 /* ===== TRANSCRIPTION PAGE RESPONSIVE ===== */
 @media (max-width: 768px) {
   .transcription-main {
@@ -5623,4 +5879,72 @@
 @keyframes slideIn {
   from { opacity: 0; transform: translateX(20px); }
   to { opacity: 1; transform: translateX(0); }
+}
+
+/* ===== COUNTER PRESENCE (agent login) ===== */
+.agent-waiting-counters {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.agent-waiting-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #6b7280;
+}
+
+.agent-waiting-chip {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 999px;
+  border: 1px solid #10b981;
+  background: rgba(16, 185, 129, 0.12);
+  color: #047857;
+  cursor: pointer;
+}
+
+.agent-waiting-chip.active {
+  background: #10b981;
+  color: #ffffff;
+}
+
+.agent-waiting-chip:hover {
+  background: rgba(16, 185, 129, 0.25);
+}
+
+.agent-waiting-chip.active:hover {
+  background: #059669;
+}
+
+/* ===== PEER PRESENCE INDICATOR (agent dashboard) ===== */
+.agent-peer-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: rgba(239, 68, 68, 0.12);
+  color: #b91c1c;
+}
+
+.agent-peer-status.connected {
+  background: rgba(16, 185, 129, 0.14);
+  color: #047857;
+}
+
+.agent-peer-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: pulse 1.4s ease-in-out infinite;
 }

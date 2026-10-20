@@ -32,6 +32,30 @@ DEMO_CONVERSATION = [
 
 DEMO_CONVERSATION_TWI = [
     {"speaker": "agent", "text": "Mema wo aha. Yɛma wo akwaaba wɔ MTN Service Centre. Ɛdeɛn na metumi aboa wo nnɛ?", "delay": 0.8},
+    {"speaker": "customer", "text": "Mepɛ sɛ mihu nea enti a wɔayi GH₵5 foforo afi me MoMo sika mu.", "delay": 1.2},
+    {"speaker": "agent", "text": "Mepa wo kyɛw, Samuel. Ɛdeɛn na wɔayi?", "delay": 1.0},
+    {"speaker": "customer", "text": "Mɛtrɛɛ GH₵50, nanso GH₵5 foforo afi me sika mu.", "delay": 1.0},
+    {"speaker": "agent", "text": "Metu am, Samuel. Menni wo din na ma me nhwɛ no?", "delay": 1.0},
+    {"speaker": "customer", "text": "Me din na Samuel Tettey.", "delay": 0.8},
+    {"speaker": "agent", "text": "Medaase. Ma menhwɛ wo MoMo nomba?", "delay": 0.8},
+    {"speaker": "customer", "text": "0241234567.", "delay": 0.8},
+    {"speaker": "agent", "text": "Medaase, Samuel. Wohia transaction reference no?", "delay": 0.8},
+    {"speaker": "customer", "text": "Aane. REF88321.", "delay": 0.8},
+    {"speaker": "agent", "text": "Wode transaction no ayɛ dɛn na ɛyɛ?", "delay": 0.8},
+    {"speaker": "customer", "text": "Agyee, around 3:45 PM.", "delay": 0.8},
+    {"speaker": "agent", "text": "Ma me hwɛ wo complaint no na ma me bere kakra nhwehwɛ eyi mu.", "delay": 1.0},
+    {"speaker": "customer", "text": "Enti, mobɛsan de me sika no ama me?", "delay": 1.0},
+    {"speaker": "agent", "text": "Aane, Samuel. Sɛ wɔnnye sɛ GH₵5 no wɔayi deɛn na metumi aboa wo refund process no.", "delay": 1.2},
+    {"speaker": "customer", "text": "Medaase. Ɛbɛtwa ahe sɛ me sika no?", "delay": 0.9},
+    {"speaker": "agent", "text": "Refund no bɛtwa ahyɛ wo, nanso sɛ dɛn na ɛyɛ, bɛtwa sɛ nnɔnhwere 15 mu. Ma menhwɛ nnɛ no na ma me bere kakra nhwehwɛ wo.", "delay": 1.4},
+    {"speaker": "customer", "text": "Yoo. Mɛtumi akɔnka progress no?", "delay": 0.8},
+    {"speaker": "agent", "text": "Aane, Samuel. Deɛn na wɔ hɔ? Ka wo transaction reference no, REF88321, sɛ wohwɛ no a wode nhwehwɛ wo complaint no.", "delay": 1.0},
+    {"speaker": "customer", "text": "Daabi, medaase.", "delay": 0.8},
+    {"speaker": "agent", "text": "Yɛma wo akwaaba. Da no nkɔ yie mma wo!", "delay": 1.1},
+]
+
+DEMO_CONVERSATION_TWI_OLD = [
+    {"speaker": "agent", "text": "Mema wo aha. Yɛma wo akwaaba wɔ MTN Service Centre. Ɛdeɛn na metumi aboa wo nnɛ?", "delay": 0.8},
     {"speaker": "customer", "text": "Mede Ghana cedis 50 kɔmaa me nuabea nnora, nanso ɔnnyaa sika no. Wɔbɔɔ me MoMo wallet no ka.", "delay": 1.2},
     {"speaker": "agent", "text": "Mepa wo kyɛw, meyɛ awerɛhow sɛ eyi ato wo. Ma menhwɛ transaction no na mahu nea asi. Wubetumi ama me telefon nɔma a wode kɔmaa sika no?", "delay": 1.0},
     {"speaker": "customer", "text": "Aane. Ɛyɛ 0244656220.", "delay": 1.0},
